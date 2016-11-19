@@ -278,6 +278,7 @@ int insert(const char *string, size_t strlen, int32_t ip4_address) {
 struct trie_node *
 _delete(struct trie_node *node, const char *string,
         size_t strlen) {
+
     int keylen, cmp;
 
     // First things first, check if we are NULL
@@ -365,10 +366,15 @@ _delete(struct trie_node *node, const char *string,
 
 int delete (const char *string, size_t strlen) {
 // Skip strings of length 0
-if (strlen == 0)
-return 0;
 
-return (NULL != _delete(root, string, strlen));
+    if (strlen == 0)
+        return 0;
+
+    pthread_mutex_lock(&mutex);
+    int delete_result = _delete(root, string, strlen);
+    pthread_mutex_unlock(&mutex);
+
+    return (NULL != delete_result);
 }
 
 
