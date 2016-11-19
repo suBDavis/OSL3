@@ -14,6 +14,11 @@ struct trie_node {
     char key[64]; /* Up to 64 chars */
 };
 
+struct lru_node {
+    struct trie_node *data;
+    struct lru_node *next;
+};
+
 static struct trie_node *root = NULL;
 static int node_count = 0;
 static int max_count = 100;  //Try to stay under 100 nodes
@@ -350,34 +355,47 @@ _delete(struct trie_node *node, const char *string,
 
 }
 
-int delete  (
-const char *string, size_t
-strlen) {
-// Skip strings of length 0
-if (strlen == 0)
-return 0;
+int delete (const char *string, size_t strlen) {
+    // Skip strings of length 0
+    if (strlen == 0)
+        return 0;
 
-return (NULL !=
-_delete(root, string, strlen
-));
+    return (NULL != _delete(root, string, strlen));
 }
 
 
-/* Find one node to remove from the tree. 
+/* Find one node to remove from the tree.
  * Use any policy you like to select the node.
  */
 int drop_one_node() {
-    // Your code here
-    return 0;
+    struct trie_node *node = root;
+    char key[64];
+    int32_t *ip_returned = 0;
+
+    // Find the end of some trie.
+    while(node) {
+        strcpy(key, node->key);
+        node = node->children;
+    }
+    assert(strlen(key) < 64);
+    assert(node==NULL);
+    assert(search(key, strlen(key), ip_returned));
+    assert(ip_returned);
+
+    return delete(key, strlen(key));
 }
 
 /* Check the total node count; see if we have exceeded a the max.
  */
 void check_max_nodes() {
     while (node_count > max_count) {
-        printf("Warning: not dropping nodes yet.  Drop one node not implemented\n");
-        break;
-        //drop_one_node();
+        // printf("Warning: not dropping nodes yet.  Drop one node not implemented\n");
+        // break;
+
+        if(drop_one_node())
+            continue;
+        else
+            printf("DROP ONE NODE FAILED\n");
     }
 }
 
