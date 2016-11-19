@@ -364,25 +364,34 @@ int delete (const char *string, size_t strlen) {
  */
 int drop_one_node() {
     struct trie_node *node = root;
-    char key[64];
-    int32_t *ip_returned = 0;
+    char *key = strndup(node->key, node->strlen);
+    int res;
+    int size = node->strlen;
+
+    puts(key);
 
     // Find the end of some trie.
-    while(node) {
-        strcpy(key, node->key);
-        node = node->children;
+    while ((node = node->children)) {
+        assert(node->key != NULL);
+        size += node->strlen;
+        strncat(key, node->key, node->strlen);
     }
-
+    printf("%s %lu %d\n", key, strlen(key), size);
+    printf("%s %lu %d\n", key, strlen(key), size);
+    printf("%d\n", (strlen(key) == size));
+    assert(size == strlen(key));
     assert(strlen(key) < 64);
-    assert(node==NULL);
-    assert(search(key, strlen(key), ip_returned));
-    assert(ip_returned);
-
-    return delete(key, strlen(key));
+    assert(node == NULL);
+    assert((node = _search(root, key, strlen(key))) != NULL);
+    assert(node->ip4_address);
+    res = (_delete(root, key, strlen(key)) != NULL);
+    free(key);
+    return (res);
 }
 
+
 /* Check the total node count; see if we have exceeded a the max.
- */
+*/
 void check_max_nodes() {
     while (node_count > max_count) {
         // printf("Warning: not dropping nodes yet.  Drop one node not implemented\n");
@@ -398,7 +407,7 @@ void check_max_nodes() {
 
 void _print(struct trie_node *node) {
     printf("Node at %p.  Key %.*s, IP %d.  Next %p, Children %p\n",
-           node, node->strlen, node->key, node->ip4_address, node->next, node->children);
+            node, node->strlen, node->key, node->ip4_address, node->next, node->children);
     if (node->children)
         _print(node->children);
     if (node->next)

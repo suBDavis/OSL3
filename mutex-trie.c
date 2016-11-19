@@ -116,8 +116,7 @@ int search(const char *string, size_t strlen, int32_t *ip4_address) {
         return 0;
 
     pthread_mutex_lock(&mutex);
-    struct trie_node *found;
-    found = _search(root, string, strlen);
+    struct trie_node *found = _search(root, string, strlen);
 
     if (found && ip4_address)
         *ip4_address = found->ip4_address;
@@ -386,40 +385,31 @@ int delete (const char *string, size_t strlen) {
  */
 int drop_one_node() {
     struct trie_node *node = root;
-    char *key = strndup(node->key, node->strlen);
+    char *key = malloc(64);
     int res;
-    int size = node->strlen;
-
-    puts(key);
 
     // Find the end of some trie.
-    while ((node = node->children)) {
-        size += node->strlen;
+    do {
+        puts(node->key);
+        assert(node->key != NULL);
         strncat(key, node->key, node->strlen);
-    }
-    printf("%s %lu %d\n", key, strlen(key), size);
-    printf("%s %lu %d\n", key, strlen(key), size);
-    printf("%d\n", (strlen(key) == size));
-    assert(size == strlen(key));
+    } while ((node = node->children));
+
     assert(strlen(key) < 64);
     assert(node == NULL);
     assert((node = _search(root, key, strlen(key))) != NULL);
     assert(node->ip4_address);
-    res = (_delete(root, key, strlen(key)) != NULL);
+    assert((res = (_delete(root, key, strlen(key)) != NULL)));
     free(key);
-    return (res);
+    return (0);
 }
 
 /* Check the total node count; see if we have exceeded a the max.
 */
 void check_max_nodes() {
     pthread_mutex_lock(&mutex);
-    while (node_count > max_count) {
-        if (!drop_one_node()){
-            printf("DROP ONE NODE FAILED\n");
-            break;
-        }
-    }
+    while (node_count > max_count)
+        drop_one_node();
     pthread_mutex_unlock(&mutex);
 }
 
