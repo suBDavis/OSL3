@@ -371,7 +371,7 @@ int delete (const char *string, size_t strlen) {
         return 0;
 
     pthread_mutex_lock(&mutex);
-    int delete_result = _delete(root, string, strlen);
+    struct trie_node *delete_result = _delete(root, string, strlen);
     pthread_mutex_unlock(&mutex);
 
     return (NULL != delete_result);
