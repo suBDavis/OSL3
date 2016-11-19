@@ -14,11 +14,6 @@ struct trie_node {
     char key[64]; /* Up to 64 chars */
 };
 
-struct lru_node {
-    struct trie_node *data;
-    struct lru_node *next;
-};
-
 static struct trie_node *root = NULL;
 static int node_count = 0;
 static int max_count = 100;  //Try to stay under 100 nodes
@@ -377,6 +372,7 @@ int drop_one_node() {
         strcpy(key, node->key);
         node = node->children;
     }
+
     assert(strlen(key) < 64);
     assert(node==NULL);
     assert(search(key, strlen(key), ip_returned));
