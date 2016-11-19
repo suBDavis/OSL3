@@ -48,7 +48,7 @@ int compare_keys(const char *string1, int len1, const char *string2, int len2, i
     return strncmp(&string1[offset1], &string2[offset2], keylen);
 }
 
-void init(int numthreads, pthread_cond_t cond) {
+void init(int numthreads) {
     if (numthreads != 1)
         printf("WARNING: This Trie is only safe to use with one thread!!!  You have %d!!!\n", numthreads);
 

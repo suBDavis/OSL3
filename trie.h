@@ -3,11 +3,12 @@
 
 #include <stdint.h>
 #include <assert.h>
+#include <pthread.h>
 
 /* A simple (reverse) trie interface */
 
 /* Optional init routine.  May not be required. */
-void init (int numthreads, pthread_cond_t cond);
+void init (int numthreads);
 
 /* Return 1 on success, 0 on failure */
 int insert (const char *string, size_t strlen, int32_t ip4_address);
@@ -37,5 +38,9 @@ void print ();
  */
 extern int allow_squatting;
 
+/* The mutex/cond variables needed
+ */
+extern pthread_mutex_t trie_mutex;
+extern pthread_cond_t trie_delete_cond;
 
 #endif /* __TRIE_H__ */ 

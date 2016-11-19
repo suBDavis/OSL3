@@ -17,11 +17,13 @@
 
 int separate_delete_thread = 0;
 int simulation_length = 30; // default to 30 seconds
-pthread_cond_t delete_condition = PTHREAD_COND_INITIALIZER;
 volatile int finished = 0;
 
+pthread_mutex_t trie_mutex = PTHREAD_MUTEX_INITIALIZER; 
+pthread_cond_t trie_delete_cond = PTHREAD_COND_INITIALIZER;
+
 // Uncomment this line for debug printing
-#define DEBUG 1
+// #define DEBUG 1
 #ifdef DEBUG
 #define DEBUG_PRINT(...) printf(__VA_ARGS__)
 #else
@@ -31,8 +33,11 @@ volatile int finished = 0;
 
 static void *
 delete_thread(void *arg) {
-    while (!finished)
+    while ( pthread_cond_wait(&trie_delete_cond, &trie_mutex) ){
+        printf("DELETE TRIGGERED\n");
         check_max_nodes();
+    }
+
     return NULL;
 }
 
@@ -239,7 +244,7 @@ int main(int argc, char **argv) {
 
     // Create initial data structure, populate with initial entries
     // Note: Each variant of the tree has a different init function, statically compiled in
-    init(numthreads, delete_condition);
+    init(numthreads);
     srandom(time(0));
 
     // Run the self-tests if we are in debug mode

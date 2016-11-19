@@ -4,23 +4,21 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include <pthread.h>
 #include <time.h>
+#include <pthread.h>
 #include "trie.h"
 
 struct trie_node {
-    struct trie_node *next;  /* parent list */
-    unsigned int strlen; /* Length of the key */
-    int32_t ip4_address; /* 4 octets */
+    struct trie_node *next;     /* parent list */
+    unsigned int strlen;        /* Length of the key */
+    int32_t ip4_address;        /* 4 octets */
     struct trie_node *children; /* Sorted list of children */
-    char key[64]; /* Up to 64 chars */
+    char key[64];               /* Up to 64 chars */
 };
 
 static struct trie_node *root = NULL;
 static int node_count = 0;
 static int max_count = 100;  //Try to stay under 100 nodes
-static pthread_mutex_t mutex;
-static pthread_cond_t delete_cond;
 
 /* Does not modify the heap
  * Does not require a lock
@@ -58,12 +56,7 @@ int compare_keys(const char *string1, int len1, const char *string2, int len2, i
     return strncmp(&string1[offset1], &string2[offset2], keylen);
 }
 
-void init(int numthreads, pthread_cond_t cond) {
-    if (pthread_mutex_init(&mutex, NULL)) {
-        printf("MUTEX Create failed");
-        exit(1);
-    }
-    delete_cond = cond;
+void init(int numthreads){
     root = NULL;
 }
 
@@ -117,13 +110,13 @@ int search(const char *string, size_t strlen, int32_t *ip4_address) {
     if (strlen == 0)
         return 0;
 
-    pthread_mutex_lock(&mutex);
+    pthread_mutex_lock(&trie_mutex);
     struct trie_node *found = _search(root, string, strlen);
 
     if (found && ip4_address)
         *ip4_address = found->ip4_address;
 
-    pthread_mutex_unlock(&mutex);
+    pthread_mutex_unlock(&trie_mutex);
     return (found != NULL);
 }
 
@@ -261,7 +254,7 @@ int insert(const char *string, size_t strlen, int32_t ip4_address) {
     if (strlen == 0)
         return 0;
 
-    pthread_mutex_lock(&mutex);
+    pthread_mutex_lock(&trie_mutex);
     int insert_res;
 
     /* Edge case: root is null */
@@ -269,7 +262,17 @@ int insert(const char *string, size_t strlen, int32_t ip4_address) {
         root = new_leaf(string, strlen, ip4_address);
         insert_res = 1;
     } else insert_res = _insert(string, strlen, ip4_address, root, NULL, NULL);
-    pthread_mutex_unlock(&mutex);
+
+    if (node_count > max_count){
+        int sig = pthread_cond_signal(&trie_delete_cond); // ZERO on success
+        if (sig){
+            printf("SIGNAL FAILED %d\n", sig);
+            printf("%p\n", &trie_delete_cond);
+            exit(0);
+        }
+    }
+
+    pthread_mutex_unlock(&trie_mutex);
     return insert_res;
 }
 
@@ -374,9 +377,9 @@ int delete (const char *string, size_t strlen) {
     if (strlen == 0)
         return 0;
 
-    pthread_mutex_lock(&mutex);
+    pthread_mutex_lock(&trie_mutex);
     struct trie_node *delete_result = _delete(root, string, strlen);
-    pthread_mutex_unlock(&mutex);
+    pthread_mutex_unlock(&trie_mutex);
 
     return (NULL != delete_result);
 }
@@ -401,20 +404,23 @@ int drop_one_node() {
     assert(node == NULL);
     assert((node = _search(root, key, strlen(key))) != NULL);
     assert(node->ip4_address);
-    assert((res = (_delete(root, key, strlen(key)) != NULL)));
+    res = (_delete(root, key, strlen(key)) != NULL);
+    assert(res);
     free(key);
-    return (1);
+    return res;
 }
 
 /* Check the total node count; see if we have exceeded a the max.
 */
 void check_max_nodes() {
-    pthread_mutex_lock(&mutex);
-    while (node_count > max_count)
-        if(!drop_one_node())
-            exit(1);
-
-    pthread_mutex_unlock(&mutex);
+    pthread_mutex_lock(&trie_mutex);
+    while (node_count > max_count){
+        if(!drop_one_node()){
+            printf("FAILED DROP ONE\n");
+            break;
+        }      
+    }
+    pthread_mutex_unlock(&trie_mutex);
 }
 
 
@@ -428,10 +434,10 @@ void _print(struct trie_node *node) {
 }
 
 void print() {
-    pthread_mutex_lock(&mutex);
+    pthread_mutex_lock(&trie_mutex);
     printf("Root is at %p\n", root);
     /* Do a simple depth-first search */
     if (root)
         _print(root);
-    pthread_mutex_unlock(&mutex);
+    pthread_mutex_unlock(&trie_mutex);
 }
