@@ -58,10 +58,7 @@ int compare_keys(const char *string1, int len1, const char *string2, int len2, i
 }
 
 void init(int numthreads) {
-    if (numthreads != 1)
-        printf("WARNING: This Trie is only safe to use with one thread!!!  You have %d!!!\n", numthreads);
-
-    if (!pthread_mutex_init(&mutex, NULL)) {
+    if (pthread_mutex_init(&mutex, NULL)) {
         printf("MUTEX Create failed");
         exit(1);
     }
@@ -113,17 +110,19 @@ _search(struct trie_node *node, const char *string, size_t strlen) {
 
 
 int search(const char *string, size_t strlen, int32_t *ip4_address) {
-    struct trie_node *found;
 
     // Skip strings of length 0
     if (strlen == 0)
         return 0;
 
+    pthread_mutex_lock(&mutex);
+    struct trie_node *found;
     found = _search(root, string, strlen);
 
     if (found && ip4_address)
         *ip4_address = found->ip4_address;
 
+    pthread_mutex_unlock(&mutex);
     return (found != NULL);
 }
 
@@ -261,12 +260,16 @@ int insert(const char *string, size_t strlen, int32_t ip4_address) {
     if (strlen == 0)
         return 0;
 
+    pthread_mutex_lock(&mutex);
+    int insert_res;
+
     /* Edge case: root is null */
     if (root == NULL) {
         root = new_leaf(string, strlen, ip4_address);
-        return 1;
-    }
-    return _insert(string, strlen, ip4_address, root, NULL, NULL);
+        insert_res = 1;
+    } else insert_res = _insert(string, strlen, ip4_address, root, NULL, NULL);
+    pthread_mutex_unlock(&mutex);
+    return insert_res;
 }
 
 /* Recursive helper function.
@@ -384,7 +387,6 @@ int delete (const char *string, size_t strlen) {
 int drop_one_node() {
     struct trie_node *node = root;
     char key[64];
-    int32_t *ip_returned = 0;
 
     // Find the end of some trie.
     while(node) {
@@ -393,16 +395,16 @@ int drop_one_node() {
     }
 
     assert(strlen(key) < 64);
-    assert(node==NULL);
-    assert(search(key, strlen(key), ip_returned));
-    assert(ip_returned);
+    assert(node == NULL);
+    assert(node->ip4_address);
 
-    return delete(key, strlen(key));
+    return (_delete(root, key, strlen(key)) != NULL);
 }
 
 /* Check the total node count; see if we have exceeded a the max.
- */
+*/
 void check_max_nodes() {
+    pthread_mutex_lock(&mutex);
     while (node_count > max_count) {
         // printf("Warning: not dropping nodes yet.  Drop one node not implemented\n");
         // break;
@@ -412,12 +414,13 @@ void check_max_nodes() {
             break;
         }
     }
+    pthread_mutex_unlock(&mutex);
 }
 
 
 void _print(struct trie_node *node) {
     printf("Node at %p.  Key %.*s, IP %d.  Next %p, Children %p\n",
-           node, node->strlen, node->key, node->ip4_address, node->next, node->children);
+            node, node->strlen, node->key, node->ip4_address, node->next, node->children);
     if (node->children)
         _print(node->children);
     if (node->next)
@@ -425,8 +428,10 @@ void _print(struct trie_node *node) {
 }
 
 void print() {
+    pthread_mutex_lock(&mutex);
     printf("Root is at %p\n", root);
     /* Do a simple depth-first search */
     if (root)
         _print(root);
+    pthread_mutex_unlock(&mutex);
 }
