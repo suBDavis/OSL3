@@ -386,13 +386,11 @@ int delete (const char *string, size_t strlen) {
  */
 int drop_one_node() {
     struct trie_node *node = root;
-    char key[64];
+    char *key = strndup(node->key, node->strlen);
 
     // Find the end of some trie.
-    while(node) {
-        strcpy(key, node->key);
-        node = node->children;
-    }
+    while ((node = node->children))
+        strncat(key, node->key, node->strlen);
 
     assert(strlen(key) < 64);
     assert(node == NULL);
