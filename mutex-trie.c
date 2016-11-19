@@ -20,6 +20,7 @@ static struct trie_node *root = NULL;
 static int node_count = 0;
 static int max_count = 100;  //Try to stay under 100 nodes
 static pthread_mutex_t mutex;
+static pthread_cond_t delete_cond;
 
 /* Does not modify the heap
  * Does not require a lock
@@ -57,11 +58,12 @@ int compare_keys(const char *string1, int len1, const char *string2, int len2, i
     return strncmp(&string1[offset1], &string2[offset2], keylen);
 }
 
-void init(int numthreads) {
+void init(int numthreads, pthread_cond_t cond) {
     if (pthread_mutex_init(&mutex, NULL)) {
         printf("MUTEX Create failed");
         exit(1);
     }
+    delete_cond = cond;
     root = NULL;
 }
 
@@ -401,7 +403,7 @@ int drop_one_node() {
     assert(node->ip4_address);
     assert((res = (_delete(root, key, strlen(key)) != NULL)));
     free(key);
-    return (0);
+    return (1);
 }
 
 /* Check the total node count; see if we have exceeded a the max.
@@ -409,7 +411,9 @@ int drop_one_node() {
 void check_max_nodes() {
     pthread_mutex_lock(&mutex);
     while (node_count > max_count)
-        drop_one_node();
+        if(!drop_one_node())
+            exit(1);
+
     pthread_mutex_unlock(&mutex);
 }
 

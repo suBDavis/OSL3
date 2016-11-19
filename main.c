@@ -17,6 +17,7 @@
 
 int separate_delete_thread = 0;
 int simulation_length = 30; // default to 30 seconds
+pthread_cond_t delete_condition = PTHREAD_COND_INITIALIZER;
 volatile int finished = 0;
 
 // Uncomment this line for debug printing
@@ -238,7 +239,7 @@ int main(int argc, char **argv) {
 
     // Create initial data structure, populate with initial entries
     // Note: Each variant of the tree has a different init function, statically compiled in
-    init(numthreads);
+    init(numthreads, delete_condition);
     srandom(time(0));
 
     // Run the self-tests if we are in debug mode
