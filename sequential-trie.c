@@ -388,10 +388,10 @@ void check_max_nodes() {
         // printf("Warning: not dropping nodes yet.  Drop one node not implemented\n");
         // break;
 
-        if(drop_one_node())
-            continue;
-        else
+        if (!drop_one_node()){
             printf("DROP ONE NODE FAILED\n");
+            break;
+        }
     }
 }
 
