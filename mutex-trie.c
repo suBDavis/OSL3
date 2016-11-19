@@ -387,16 +387,27 @@ int delete (const char *string, size_t strlen) {
 int drop_one_node() {
     struct trie_node *node = root;
     char *key = strndup(node->key, node->strlen);
+    int res;
+    int size = node->strlen;
+
+    puts(key);
 
     // Find the end of some trie.
-    while ((node = node->children))
+    while ((node = node->children)) {
+        size += node->strlen;
         strncat(key, node->key, node->strlen);
-
+    }
+    printf("%s %lu %d\n", key, strlen(key), size);
+    printf("%s %lu %d\n", key, strlen(key), size);
+    printf("%d\n", (strlen(key) == size));
+    assert(size == strlen(key));
     assert(strlen(key) < 64);
     assert(node == NULL);
+    assert((node = _search(root, key, strlen(key))) != NULL);
     assert(node->ip4_address);
-
-    return (_delete(root, key, strlen(key)) != NULL);
+    res = (_delete(root, key, strlen(key)) != NULL);
+    free(key);
+    return (res);
 }
 
 /* Check the total node count; see if we have exceeded a the max.
@@ -404,9 +415,6 @@ int drop_one_node() {
 void check_max_nodes() {
     pthread_mutex_lock(&mutex);
     while (node_count > max_count) {
-        // printf("Warning: not dropping nodes yet.  Drop one node not implemented\n");
-        // break;
-
         if (!drop_one_node()){
             printf("DROP ONE NODE FAILED\n");
             break;
