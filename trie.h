@@ -7,7 +7,7 @@
 /* A simple (reverse) trie interface */
 
 /* Optional init routine.  May not be required. */
-void init (int numthreads);
+void init (int numthreads, pthread_cond_t cond);
 
 /* Return 1 on success, 0 on failure */
 int insert (const char *string, size_t strlen, int32_t ip4_address);

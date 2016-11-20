@@ -10,7 +10,7 @@
 #include <stdlib.h>
 #include "trie.h"
 
-void init(int numthreads) {
+void init(int numthreads, pthread_cond_t cond) {
     /* Your code here */
 }
 
