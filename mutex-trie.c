@@ -266,14 +266,8 @@ int insert(const char *string, size_t strlen, int32_t ip4_address) {
         insert_res = 1;
     } else insert_res = _insert(string, strlen, ip4_address, root, NULL, NULL);
 
-    if (node_count > max_count){
-        int sig = pthread_cond_signal(&trie_delete_cond); // ZERO on success
-        if (sig){
-            printf("SIGNAL FAILED %d\n", sig);
-            printf("%p\n", &trie_delete_cond);
-            exit(0);
-        }
-    }
+    if (node_count > max_count)
+        assert(!pthread_cond_signal(&trie_delete_cond));
 
     pthread_mutex_unlock(&trie_mutex);
     return insert_res;
@@ -420,14 +414,15 @@ int drop_one_node() {
 void check_max_nodes() {
     pthread_mutex_lock(&trie_mutex);
     printf("DELETE TRIGGERED 1 \n");
-    while(!pthread_cond_wait(&trie_delete_cond, &trie_mutex)){
-        while (node_count > max_count){
-            printf("DELETE TRIGGERED 2 \n");
-            assert(drop_one_node());
-        }
-        printf("DELETE DONE\n");
-        break;
-    }
+    
+    while (node_count <= max_count)
+        assert(!pthread_cond_wait(&trie_delete_cond, &trie_mutex));
+    
+    printf("DELETE TRIGGERED 2 \n");
+    while (node_count > max_count)
+        assert(drop_one_node());
+
+    printf("DELETE DONE\n");
     pthread_mutex_unlock(&trie_mutex);
 }
 

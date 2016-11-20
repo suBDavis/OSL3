@@ -272,13 +272,15 @@ int main(int argc, char ** argv) {
   sleep (simulation_length);
   finished = 1;
 
+  printf("FINISHED\n");
+
   // Wait for all clients to exit.  If we are allowing blocking,
   // cancel the threads, since they may hang forever
   if (separate_delete_thread) {
       for (i = 0; i < numthreads + separate_delete_thread; i++) {
-    int rv = pthread_cancel(tinfo[i]);
-    if (rv != 0)
-      printf ("Uh oh.  pthread_cancel failed %d\n", rv);
+        int rv = pthread_cancel(tinfo[i]);
+        if (rv != 0)
+        printf ("Uh oh.  pthread_cancel failed %d\n", rv);
       }
   }
 
