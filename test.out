@@ -20,3 +20,17 @@ dns-mutex: mutex-trie.c:402: drop_one_node: Assertion `size == strlen(key)' fail
 dns-mutex: mutex-trie.c:410: drop_one_node: Assertion `node != NULL' failed.
 dns-mutex: mutex-trie.c:413: drop_one_node: Assertion `(res = (_delete(root, key, strlen(key)) != NULL))' failed.
 dns-mutex: mutex-trie.c:413: drop_one_node: Assertion `(res = (_delete(root, key, strlen(key)) != NULL))' failed.
+dns-mutex: mutex-trie.c:405: drop_one_node: Assertion `(node = _search(root, key, strlen(key))) != NULL' failed.
+dns-mutex: mutex-trie.c:405: drop_one_node: Assertion `(node = _search(root, key, strlen(key))) != NULL' failed.
+dns-mutex: mutex-trie.c:406: drop_one_node: Assertion `node != NULL' failed.
+dns-mutex: mutex-trie.c:407: drop_one_node: Assertion `node != NULL' failed.
+dns-mutex: mutex-trie.c:409: drop_one_node: Assertion `res = (_delete(root, key, strlen(key)) != NULL)' failed.
+dns-mutex: mutex-trie.c:54: compare_keys: Assertion `keylen > 0' failed.
+dns-mutex: mutex-trie.c:54: compare_keys: Assertion `keylen > 0' failed.
+dns-mutex: mutex-trie.c:406: drop_one_node: Assertion `res = (_delete(root, key, strlen(key)) != NULL)' failed.
+dns-mutex: mutex-trie.c:410: drop_one_node: Assertion `res = (_delete(root, key, strlen(key)) != NULL)' failed.
+dns-mutex: mutex-trie.c:412: drop_one_node: Assertion `res = (_delete(root, key, strlen(key)) != NULL)' failed.
+dns-mutex: mutex-trie.c:411: drop_one_node: Assertion `res = (_delete(root, key, strlen(key)) != NULL)' failed.
+dns-mutex: mutex-trie.c:410: drop_one_node: Assertion `res = (_delete(root, key, strlen(key)) != NULL)' failed.
+dns-mutex: mutex-trie.c:412: drop_one_node: Assertion `res = (_delete(root, key, strlen(key)) != NULL)' failed.
+dns-mutex: mutex-trie.c:412: drop_one_node: Assertion `res = (_delete(root, key, strlen(key)) != NULL)' failed.

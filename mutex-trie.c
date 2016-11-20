@@ -54,6 +54,11 @@ int compare_keys(const char *string1, int len1, const char *string2, int len2, i
     assert(keylen > 0);
     if (pKeylen)
         *pKeylen = keylen;
+    //for (int i = 1; i <= keylen; ++i) {
+    //    if (string1[len1-i] > string2[len2-i]) return -1;
+    //    else if (string1[len1-i] < string2[len2-i]) return 1;
+    //}
+    //return 0;
     return strncmp(&string1[offset1], &string2[offset2], keylen);
 }
 
@@ -98,14 +103,10 @@ _search(struct trie_node *node, const char *string, size_t strlen) {
             return node;
         }
 
-    } else if (cmp < 0) {
-        // No, look right (the node's key is "less" than the search key)
-        return _search(node->next, string, strlen);
-    } else {
-        // Quit early
-        return 0;
     }
 
+    // No, look right (the node's key is "less" than the search key)
+    return _search(node->next, string, strlen);
 }
 
 
@@ -127,7 +128,7 @@ int search(const char *string, size_t strlen, int32_t *ip4_address) {
 
 /* Recursive helper function */
 int _insert(const char *string, size_t strlen, int32_t ip4_address,
-            struct trie_node *node, struct trie_node *parent, struct trie_node *left) {
+        struct trie_node *node, struct trie_node *parent, struct trie_node *left) {
 
     int cmp, keylen;
 
@@ -173,7 +174,7 @@ int _insert(const char *string, size_t strlen, int32_t ip4_address,
             } else {
                 // Recur on children list, store "parent" (loosely defined)
                 return _insert(string, strlen - keylen, ip4_address,
-                               node->children, node, NULL);
+                        node->children, node, NULL);
             }
         } else {
             assert(strlen == keylen);
@@ -190,7 +191,7 @@ int _insert(const char *string, size_t strlen, int32_t ip4_address,
         int i, cmp2, keylen2, overlap = 0;
         for (i = 1; i < keylen; i++) {
             cmp2 = compare_keys(&node->key[i], node->strlen - i,
-                                &string[i], strlen - i, &keylen2);
+                    &string[i], strlen - i, &keylen2);
             assert(keylen2 > 0);
             if (cmp2 == 0) {
                 overlap = 1;
@@ -224,7 +225,7 @@ int _insert(const char *string, size_t strlen, int32_t ip4_address,
             }
 
             return _insert(string, i, ip4_address,
-                           node, new_node, NULL);
+                    node, new_node, NULL);
         } else if (cmp < 0) {
 
             if (node->next == NULL) {
@@ -331,10 +332,10 @@ _delete(struct trie_node *node, const char *string,
                     free(node);
                     node_count--;
                     return (struct trie_node *) 0x100100; /* XXX: Don't use this pointer for anything except
-                         * comparison with NULL, since the memory is freed.
-                         * Return a "poison" pointer that will probably
-                         * segfault if used.
-                         */
+                                                           * comparison with NULL, since the memory is freed.
+                                                           * Return a "poison" pointer that will probably
+                                                           * segfault if used.
+                                                           */
                 }
                 return node;
             } else {
@@ -343,31 +344,27 @@ _delete(struct trie_node *node, const char *string,
             }
         }
 
-    } else if (cmp < 0) {
-        // No, look right (the node's key is "less" than  the search key)
-        struct trie_node *found = _delete(node->next, string, strlen);
-        if (found) {
-            /* If the node doesn't have children, delete it.
-             * Otherwise, keep it around to find the kids */
-            if (found->children == NULL && found->ip4_address == 0) {
-                assert(node->next == found);
-                node->next = found->next;
-                free(found);
-                node_count--;
-            }
-
-            return node; /* Recursively delete needless interior nodes */
-        }
-        return NULL;
-    } else {
-        // Quit early
-        return NULL;
     }
+    // No, look right (the node's key is "less" than  the search key)
+    struct trie_node *found = _delete(node->next, string, strlen);
+    if (found) {
+        /* If the node doesn't have children, delete it.
+         * Otherwise, keep it around to find the kids */
+        if (found->children == NULL && found->ip4_address == 0) {
+            assert(node->next == found);
+            node->next = found->next;
+            free(found);
+            node_count--;
+        }
+
+        return node; /* Recursively delete needless interior nodes */
+    }
+    return NULL;
 
 }
 
 int delete (const char *string, size_t strlen) {
-// Skip strings of length 0
+    // Skip strings of length 0
 
     if (strlen == 0)
         return 0;
@@ -385,23 +382,27 @@ int delete (const char *string, size_t strlen) {
  */
 int drop_one_node() {
     struct trie_node *node = root;
-    char *key = malloc(64);
-    int res;
+    int size = 0;
 
     // Find the end of some trie.
     do {
-        puts(node->key);
+        size += node->strlen;
+    } while ((node = node->children));
+    node = root;
+    assert(node->key != NULL);
+    char *key = malloc(size + 1);
+    key[size] = '\0';
+    do {
         assert(node->key != NULL);
-        strncat(key, node->key, node->strlen);
+        size -= node->strlen;
+        memcpy(key + size, node->key, node->strlen);
     } while ((node = node->children));
 
-    assert(strlen(key) < 64);
     assert(node == NULL);
-    assert((node = _search(root, key, strlen(key))) != NULL);
-    assert(node->ip4_address);
-    assert((res = (_delete(root, key, strlen(key)) != NULL)));
+    int res = (_delete(root, key, strlen(key)) != NULL);
+
     free(key);
-    return (0);
+    return res;
 }
 
 /* Check the total node count; see if we have exceeded a the max.
@@ -409,7 +410,7 @@ int drop_one_node() {
 void check_max_nodes() {
     pthread_mutex_lock(&mutex);
     while (node_count > max_count)
-        drop_one_node();
+        assert(drop_one_node());
     pthread_mutex_unlock(&mutex);
 }
 
