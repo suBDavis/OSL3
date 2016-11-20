@@ -55,11 +55,6 @@ int compare_keys(const char *string1, int len1, const char *string2, int len2, i
     assert(keylen > 0);
     if (pKeylen)
         *pKeylen = keylen;
-    //for (int i = 1; i <= keylen; ++i) {
-    //    if (string1[len1-i] > string2[len2-i]) return -1;
-    //    else if (string1[len1-i] < string2[len2-i]) return 1;
-    //}
-    //return 0;
     return strncmp(&string1[offset1], &string2[offset2], keylen);
 }
 
