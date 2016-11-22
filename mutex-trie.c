@@ -1,10 +1,12 @@
 /* A simple, (reverse) trie.  Only for use with 1 thread. */
 
+#include <pthread.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include "trie.h"
+#include <unistd.h>
 
 struct trie_node {
     struct trie_node *next;  /* parent list */
@@ -18,7 +20,7 @@ static struct trie_node * root = NULL;
 static int node_count = 0;
 static int max_count = 100;  //Try to stay under 100 nodes
 static pthread_mutex_t mutex;
-//static pthread_cond_t delete_cond;
+static pthread_cond_t delete_cond = PTHREAD_COND_INITIALIZER;
 
 struct trie_node * new_leaf (const char *string, size_t strlen, int32_t ip4_address) {
     struct trie_node *new_node = malloc(sizeof(struct trie_node));
@@ -79,9 +81,6 @@ int compare_keys_substring (const char *string1, int len1, const char *string2, 
 }
 
 void init(int numthreads) {
-    if (numthreads != 1)
-        printf("WARNING: This Trie is only safe to use with one thread!!!  You have %d!!!\n", numthreads);
-
     root = NULL;
 }
 
@@ -139,12 +138,10 @@ int search  (const char *string, size_t strlen, int32_t *ip4_address) {
         return 0;
 
     pthread_mutex_lock(&mutex);
-
     found = _search(root, string, strlen);
 
     if (found && ip4_address)
         *ip4_address = found->ip4_address;
-
     pthread_mutex_unlock(&mutex);
 
     return (found != NULL);
@@ -291,6 +288,8 @@ int insert (const char *string, size_t strlen, int32_t ip4_address) {
         root = new_leaf(string, strlen, ip4_address);
         insert_res = 1;
     } else insert_res = _insert(string, strlen, ip4_address, root, NULL, NULL);
+    if (node_count > max_count)
+        pthread_cond_signal(&delete_cond);
     pthread_mutex_unlock(&mutex);
     return insert_res;
 }
@@ -399,7 +398,6 @@ int delete  (const char *string, size_t strlen) {
     pthread_mutex_lock(&mutex);
     struct trie_node *delete_result = _delete(root, string, strlen);
     pthread_mutex_unlock(&mutex);
-
     return (NULL != delete_result);
 }
 
@@ -437,12 +435,18 @@ int drop_one_node() {
 /* Check the total node count; see if we have exceeded a the max.
 */
 void check_max_nodes() {
-    pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
+    int err = pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
+    if (err)
+        printf("Failed to set cancel state: %d", err);
     pthread_mutex_lock(&mutex);
+    pthread_cond_wait(&delete_cond, &mutex);
     while (node_count > max_count)
         assert(drop_one_node());
     pthread_mutex_unlock(&mutex);
-    pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
+    err = pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
+    if (err)
+        printf("Failed to set cancel state: %d", err);
+    sleep(0);
 }
 
 
