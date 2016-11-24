@@ -132,7 +132,7 @@ _search (struct trie_node *node, const char *string, size_t strlen) {
 
 
 int search (const char *string, size_t strlen, int32_t *ip4_address) {
-    
+
     struct trie_node *found;
 
     // Skip strings of length 0
@@ -147,7 +147,7 @@ int search (const char *string, size_t strlen, int32_t *ip4_address) {
 
     if (found && ip4_address)
         *ip4_address = found->ip4_address;
-    
+
     pthread_rwlock_unlock(&rwlock);
     printf("SEARCH RELEASE\n");
     return (found != NULL);
@@ -445,34 +445,47 @@ int drop_one_node() {
 
 
 /* Check the total node count; see if we have exceeded a the max.
- */
+*/
 void check_max_nodes() {
-  /*
-    UNSUPPORTED CONDITIONAL WAIT
-    not possible with RWLOCK, unless we implement ourselves.
-    no need for setting the exit state.
-  */
+    /*
+       UNSUPPORTED CONDITIONAL WAIT
+       not possible with RWLOCK, unless we implement ourselves.
+       no need for setting the exit state.
+       */
     pthread_rwlock_wrlock(&rwlock);
 
     while (node_count > max_count)
         assert(drop_one_node());
-    
+
     pthread_rwlock_unlock(&rwlock);
 }
 
 
-void _print (struct trie_node *node) {
-    printf ("Node at %p.  Key %.*s, IP %d.  Next %p, Children %p\n", 
-            node, node->strlen, node->key, node->ip4_address, node->next, node->children);
-    if (node->children)
-        _print(node->children);
+void _print (struct trie_node *node, int depth, char lines[100]) {
+    printf("%s", lines);
+    if (!node->next)
+        printf("└");
+    else
+        printf("├");
+    printf ("%.*s, IP %d.  This %p  Next %p, Children %p\n",
+            node->strlen, node->key, node->ip4_address, node, node->next, node->children);
+    if (node->children) {
+        if (node->next)
+            strcat(lines, "| ");
+        else strcat(lines, "  ");
+        _print(node->children, depth+1, lines);
+        lines[2*depth] = '\0';
+    }
     if (node->next)
-        _print(node->next);
+        _print(node->next, depth, lines);
 }
+
 
 void print() {
     printf ("Root is at %p\n", root);
-    /* Do a simple depth-first search */
+    char lines[100];
+    lines[0] = '\0';
     if (root)
-        _print(root);
+        _print(root, 0, lines);
 }
+

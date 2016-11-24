@@ -36,7 +36,7 @@ delete_thread(void *arg) {
 }
 
 
-static void *
+    static void *
 client(void *arg)
 {
     struct random_data rd;
@@ -299,7 +299,6 @@ int main(int argc, char ** argv) {
     // cancel the threads, since they may hang forever
     if (separate_delete_thread) {
         for (i = 0; i < numthreads + separate_delete_thread; i++) {
-            printf("%lu\n", tinfo[i]);
             int rv = pthread_cancel(tinfo[i]);
             if (rv != 0)
                 printf ("Uh oh.  pthread_cancel failed %d\n", rv);
