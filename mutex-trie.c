@@ -6,6 +6,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include "trie.h"
+#include <unistd.h>
 
 struct trie_node {
     struct trie_node *next;  /* parent list */
@@ -139,13 +140,20 @@ int search  (const char *string, size_t strlen, int32_t *ip4_address) {
     if (strlen == 0)
         return 0;
 
+    int err = pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
+    if (err)
+        printf("Failed to set cancel state: %d", err);
+
     pthread_mutex_lock(&mutex);
     found = _search(root, string, strlen);
 
     if (found && ip4_address)
         *ip4_address = found->ip4_address;
     pthread_mutex_unlock(&mutex);
-
+    err = pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
+    if (err)
+        printf("Failed to set cancel state: %d", err);
+    pthread_testcancel();
     return (found != NULL);
 }
 
@@ -282,6 +290,10 @@ int insert (const char *string, size_t strlen, int32_t ip4_address) {
     if (strlen == 0)
         return 0;
 
+    int err = pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
+    if (err)
+        printf("Failed to set cancel state: %d", err);
+
     pthread_mutex_lock(&mutex);
     int insert_res;
 
@@ -293,6 +305,10 @@ int insert (const char *string, size_t strlen, int32_t ip4_address) {
     if (node_count > max_count)
         pthread_cond_signal(&delete_cond);
     pthread_mutex_unlock(&mutex);
+    err = pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
+    if (err)
+        printf("Failed to set cancel state: %d", err);
+    pthread_testcancel();
     return insert_res;
 }
 
@@ -380,7 +396,7 @@ _delete (struct trie_node *node, const char *string,
                     node->next = found->next;
                     free(found);
                     node_count--;
-                }       
+                }
 
                 return node; /* Recursively delete needless interior nodes */
             }
@@ -397,9 +413,16 @@ int delete  (const char *string, size_t strlen) {
     if (strlen == 0)
         return 0;
 
+    int err = pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
+    if (err)
+        printf("Failed to set cancel state: %d", err);
     pthread_mutex_lock(&mutex);
     struct trie_node *delete_result = _delete(root, string, strlen);
     pthread_mutex_unlock(&mutex);
+    err = pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
+    if (err)
+        printf("Failed to set cancel state: %d", err);
+    pthread_testcancel();
     return (NULL != delete_result);
 }
 
@@ -454,18 +477,30 @@ void check_max_nodes() {
 
 
 
-void _print (struct trie_node *node) {
-    printf ("Node at %p.  Key %.*s, IP %d.  Next %p, Children %p\n", 
-            node, node->strlen, node->key, node->ip4_address, node->next, node->children);
-    if (node->children)
-        _print(node->children);
+void _print (struct trie_node *node, int depth, char lines[100]) {
+    printf("%s", lines);
+    if (!node->next)
+        printf("└");
+    else
+        printf("├");
+    printf ("%.*s, IP %d.  This %p  Next %p, Children %p\n",
+            node->strlen, node->key, node->ip4_address, node, node->next, node->children);
+    if (node->children) {
+        if (node->next)
+            strcat(lines, "| ");
+        else strcat(lines, "  ");
+        _print(node->children, depth+1, lines);
+        lines[2*depth] = '\0';
+    }
     if (node->next)
-        _print(node->next);
+        _print(node->next, depth, lines);
 }
+
 
 void print() {
     printf ("Root is at %p\n", root);
-    /* Do a simple depth-first search */
+    char lines[100];
+    lines[0] = '\0';
     if (root)
-        _print(root);
+        _print(root, 0, lines);
 }
