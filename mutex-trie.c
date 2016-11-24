@@ -6,7 +6,6 @@
 #include <string.h>
 #include <stdlib.h>
 #include "trie.h"
-#include <unistd.h>
 
 struct trie_node {
     struct trie_node *next;  /* parent list */
@@ -81,6 +80,9 @@ int compare_keys_substring (const char *string1, int len1, const char *string2, 
 }
 
 void init(int numthreads) {
+    int err = pthread_mutex_init(&mutex, NULL);
+    if (err)
+        printf("Failed to initialize mutex: %d\n", err);
     root = NULL;
 }
 
@@ -446,7 +448,7 @@ void check_max_nodes() {
     err = pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
     if (err)
         printf("Failed to set cancel state: %d", err);
-    sleep(0);
+    pthread_testcancel();
 }
 
 
