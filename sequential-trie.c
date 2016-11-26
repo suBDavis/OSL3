@@ -1,40 +1,42 @@
 /* A simple, (reverse) trie.  Only for use with 1 thread. */
 
+#include <pthread.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include "trie.h"
+#include <unistd.h>
 
 struct trie_node {
-    struct trie_node *next;  /* parent list */
-    unsigned int strlen; /* Length of the key */
-    int32_t ip4_address; /* 4 octets */
-    struct trie_node *children; /* Sorted list of children */
-    char key[64]; /* Up to 64 chars */
+  struct trie_node *next;  /* parent list */
+  unsigned int strlen; /* Length of the key */
+  int32_t ip4_address; /* 4 octets */
+  struct trie_node *children; /* Sorted list of children */
+  char key[64]; /* Up to 64 chars */
 };
 
 static struct trie_node * root = NULL;
 static int node_count = 0;
-static int max_count = 100;  //Try to stay under 100 nodes
+static int max_count = 0;  //Try to stay under 100 nodes
 
 struct trie_node * new_leaf (const char *string, size_t strlen, int32_t ip4_address) {
-    struct trie_node *new_node = malloc(sizeof(struct trie_node));
-    node_count++;
-    if (!new_node) {
-        printf ("WARNING: Node memory allocation failed.  Results may be bogus.\n");
-        return NULL;
-    }
-    assert(strlen < 64);
-    assert(strlen > 0);
-    new_node->next = NULL;
-    new_node->strlen = strlen;
-    strncpy(new_node->key, string, strlen);
-    new_node->key[strlen] = '\0';
-    new_node->ip4_address = ip4_address;
-    new_node->children = NULL;
+  struct trie_node *new_node = malloc(sizeof(struct trie_node));
+  node_count++;
+  if (!new_node) {
+    printf ("WARNING: Node memory allocation failed.  Results may be bogus.\n");
+    return NULL;
+  }
+  assert(strlen < 64);
+  assert(strlen > 0);
+  new_node->next = NULL;
+  new_node->strlen = strlen;
+  strncpy(new_node->key, string, strlen);
+  new_node->key[strlen] = '\0';
+  new_node->ip4_address = ip4_address;
+  new_node->children = NULL;
 
-    return new_node;
+  return new_node;
 }
 
 int compare_keys (const char *string1, int len1, const char *string2, int len2, int *pKeylen) {
@@ -45,17 +47,17 @@ int compare_keys (const char *string1, int len1, const char *string2, int len2, 
     // Take the max of the two keys, treating the front as if it were 
     // filled with spaces, just to ensure a total order on keys.
     if (len1 < len2) {
-        keylen = len2;
-        offset = keylen - len1;
-        memset(scratch, ' ', offset);
-        memcpy(&scratch[offset], string1, len1);
-        string1 = scratch;
+      keylen = len2;
+      offset = keylen - len1;
+      memset(scratch, ' ', offset);
+      memcpy(&scratch[offset], string1, len1);
+      string1 = scratch;
     } else if (len2 < len1) {
-        keylen = len1;
-        offset = keylen - len2;
-        memset(scratch, ' ', offset);
-        memcpy(&scratch[offset], string2, len2);
-        string2 = scratch;
+      keylen = len1;
+      offset = keylen - len2;
+      memset(scratch, ' ', offset);
+      memcpy(&scratch[offset], string2, len2);
+      string2 = scratch;
     } else
         keylen = len1; // == len2
 
@@ -81,6 +83,44 @@ void init(int numthreads) {
         printf("WARNING: This Trie is only safe to use with one thread!!!  You have %d!!!\n", numthreads);
 
     root = NULL;
+
+       assert(insert("google", 6, 0));
+       assert(insert("com", 3, 0));
+       assert(insert("edu", 3, 0));
+       assert(insert("org", 3, 0));
+       assert(insert("but", 3, 0));
+       assert(insert("butter", 6, 0));
+       assert(insert("pincher", 7, 0));
+       assert(insert("pinter", 6, 0));
+       assert(insert("roller", 6, 0));
+       assert(insert("simple", 6, 0));
+       assert(insert("file", 4, 0));
+       assert(insert("principle", 9, 0));
+    print();
+
+    assert(delete("google", 6));
+    assert(delete("com", 3));
+    assert(delete("edu", 3));
+    assert(delete("org", 3));
+    assert(delete("but", 3));
+    assert(delete("butter", 6));
+    assert(delete("pincher", 7));
+    assert(delete("pinter", 6));
+    assert(delete("roller", 6));
+    assert(delete("simple", 6));
+    assert(delete("file", 4));
+    assert(delete("principle", 9));
+    print();
+    check_max_nodes();
+    
+
+
+
+}
+
+void shutdown_delete_thread() {
+    // Don't need to do anything in the sequential case.
+    return;
 }
 
 /* Recursive helper function.
@@ -219,11 +259,13 @@ int _insert (const char *string, size_t strlen, int32_t ip4_address,
 
         if (overlap) {
             // Insert a common parent, recur
-            struct trie_node *new_node = new_leaf (&string[i], strlen - i, 0);
-            int diff = node->strlen - i;
-            assert ((node->strlen - diff) > 0);
-            node->strlen -= diff;
+            int offset = strlen - keylen2;
+            struct trie_node *new_node = new_leaf (&string[offset], keylen2, 0);
+            assert ((node->strlen - keylen2) > 0);
+            node->strlen -= keylen2;
             new_node->children = node;
+            new_node->next = node->next;
+            node->next = NULL;
             assert ((!parent) || (!left));
 
             if (node == root) {
@@ -232,17 +274,14 @@ int _insert (const char *string, size_t strlen, int32_t ip4_address,
                 root = new_node;
             } else if (parent) {
                 assert(parent->children == node);
-                new_node->next = NULL;
                 parent->children = new_node;
             } else if (left) {
-                new_node->next = node->next;
-                node->next = NULL;
                 left->next = new_node;
             } else if ((!parent) && (!left)) {
                 root = new_node;
             }
 
-            return _insert(string, i, ip4_address,
+            return _insert(string, offset, ip4_address,
                     node, new_node, NULL);
         } else {
             cmp = compare_keys (node->key, node->strlen, string, strlen, &keylen);
@@ -391,8 +430,8 @@ int delete  (const char *string, size_t strlen) {
 
 
 /* Find one node to remove from the tree. 
- * Use any policy you like to select the node.
- */
+ *  * Use any policy you like to select the node.
+ *   */
 int drop_one_node() {
     struct trie_node *node = root;
     int size = 0;
@@ -413,35 +452,47 @@ int drop_one_node() {
 
     assert(node == NULL);
     int res = (_delete(root, key, strlen(key)) != NULL);
+    puts(key);
 
     free(key);
     return res;
 }
 
 
-
 /* Check the total node count; see if we have exceeded a the max.
 */
 void check_max_nodes() {
-    while (node_count > max_count)
-        assert(drop_one_node());
+    while (node_count > max_count) {
+        drop_one_node();
+        print();
+    }
 }
 
 
-
-
-void _print (struct trie_node *node) {
-    printf ("Node at %p.  Key %.*s, IP %d.  Next %p, Children %p\n", 
-            node, node->strlen, node->key, node->ip4_address, node->next, node->children);
-    if (node->children)
-        _print(node->children);
+void _print (struct trie_node *node, int depth, char lines[100]) {
+    printf("%s", lines);
+    if (!node->next)
+        printf("└");
+    else
+        printf("├");
+    printf ("%.*s\n", node->strlen, node->key);
+    if (node->children) {
+        if (node->next)
+            strcat(lines, "| ");
+        else strcat(lines, "  ");
+        _print(node->children, depth+1, lines);
+        lines[2*depth] = '\0';
+    }
     if (node->next)
-        _print(node->next);
+        _print(node->next, depth, lines);
 }
+
 
 void print() {
     printf ("Root is at %p\n", root);
-    /* Do a simple depth-first search */
+    char lines[100];
+    lines[0] = '\0';
     if (root)
-        _print(root);
+        _print(root, 0, lines);
 }
+
