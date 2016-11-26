@@ -20,6 +20,11 @@ int insert(const char *string, size_t strlen, int32_t ip4_address) {
     return 0;
 }
 
+void shutdown_delete_thread() {
+    // Don't need to do anything in the sequential case.
+    return;
+}
+
 int search(const char *string, size_t strlen, int32_t *ip4_address) {
     /* Your code here */
     return 0;

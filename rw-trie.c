@@ -85,6 +85,12 @@ void init(int numthreads) {
     root = NULL;
 }
 
+void shutdown_delete_thread() {
+    // Don't need to do anything in the sequential case.
+    return;
+}
+
+
 /* Recursive helper function.
  * Returns a pointer to the node if found.
  * Stores an optional pointer to the 
@@ -152,6 +158,7 @@ int search (const char *string, size_t strlen, int32_t *ip4_address) {
     printf("SEARCH RELEASE\n");
     return (found != NULL);
 }
+
 
 /* Recursive helper function */
 int _insert (const char *string, size_t strlen, int32_t ip4_address, 
@@ -228,11 +235,13 @@ int _insert (const char *string, size_t strlen, int32_t ip4_address,
 
         if (overlap) {
             // Insert a common parent, recur
-            struct trie_node *new_node = new_leaf (&string[i], strlen - i, 0);
-            int diff = node->strlen - i;
-            assert ((node->strlen - diff) > 0);
-            node->strlen -= diff;
+            int offset = strlen - keylen2;
+            struct trie_node *new_node = new_leaf (&string[offset], keylen2, 0);
+            assert ((node->strlen - keylen2) > 0);
+            node->strlen -= keylen2;
             new_node->children = node;
+            new_node->next = node->next;
+            node->next = NULL;
             assert ((!parent) || (!left));
 
             if (node == root) {
@@ -241,17 +250,14 @@ int _insert (const char *string, size_t strlen, int32_t ip4_address,
                 root = new_node;
             } else if (parent) {
                 assert(parent->children == node);
-                new_node->next = NULL;
                 parent->children = new_node;
             } else if (left) {
-                new_node->next = node->next;
-                node->next = NULL;
                 left->next = new_node;
             } else if ((!parent) && (!left)) {
                 root = new_node;
             }
 
-            return _insert(string, i, ip4_address,
+            return _insert(string, offset, ip4_address,
                     node, new_node, NULL);
         } else {
             cmp = compare_keys (node->key, node->strlen, string, strlen, &keylen);
@@ -280,6 +286,7 @@ int _insert (const char *string, size_t strlen, int32_t ip4_address,
         return 1;
     }
 }
+
 
 int insert (const char *string, size_t strlen, int32_t ip4_address) {
 
