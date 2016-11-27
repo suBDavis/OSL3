@@ -89,7 +89,8 @@ void init(int numthreads) {
 
 void shutdown_delete_thread() {
     // Don't need to do anything in the sequential case.
-    return;
+    printf("Is it my fault?\n");
+    pthread_cond_signal(&delete_cond);
 }
 
 /* Recursive helper function.
