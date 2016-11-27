@@ -229,7 +229,7 @@ int self_tests() {
     rv = delete("xaaa", 4);
     if (!rv) die ("Failed to delete real key xaaa\n");
 
-    // Tests suggested by Kammy
+    // Tests suggested by James
     INSERT_TEST("google", 6, 1);
     INSERT_TEST("com", 3, 2);
     INSERT_TEST("edu", 3, 3);
@@ -270,6 +270,28 @@ int self_tests() {
     DELETE_TEST("simple", 6);
     DELETE_TEST("file", 4);
     DELETE_TEST("principle", 9);
+
+    // Tests suggested by Kammy
+    INSERT_TEST("zhriz", 5, 1); 
+    INSERT_TEST("eeonbws", 7, 2); 
+    INSERT_TEST("mfpmirs", 7, 3); 
+    INSERT_TEST("pzkvlyi", 7, 14);
+    INSERT_TEST("xzrtjbz", 7, 6);
+
+    print();
+
+    SEARCH_TEST("xzrtjbz", 7, 6); 
+    SEARCH_TEST("pzkvlyi", 7, 14);
+    SEARCH_TEST("mfpmirs", 7, 3);
+    SEARCH_TEST("eeonbws", 7, 2);
+    SEARCH_TEST("zhriz", 5, 1); 
+
+
+    DELETE_TEST("mfpmirs", 7);
+    DELETE_TEST("xzrtjbz", 7); 
+    DELETE_TEST("eeonbws", 7);
+    DELETE_TEST("zhriz", 5); 
+    DELETE_TEST("pzkvlyi", 7);
 
     printf("End of self-tests, tree is:\n");
     print();

@@ -139,6 +139,7 @@ _search (struct trie_node *node, const char *string, size_t strlen) {
 }
 
 
+
 int search  (const char *string, size_t strlen, int32_t *ip4_address) {
     struct trie_node *found;
 
@@ -241,8 +242,6 @@ int _insert (const char *string, size_t strlen, int32_t ip4_address,
             assert ((!parent) || (!left));
 
             if (node == root) {
-                new_node->next = node->next;
-                node->next = NULL;
                 root = new_node;
             } else if (parent) {
                 assert(parent->children == node);
@@ -388,7 +387,7 @@ _delete (struct trie_node *node, const char *string,
                     node->next = found->next;
                     free(found);
                     node_count--;
-                }
+                }       
 
                 return node; /* Recursively delete needless interior nodes */
             }
@@ -399,6 +398,7 @@ _delete (struct trie_node *node, const char *string,
         }
     }
 }
+
 
 
 int delete  (const char *string, size_t strlen) {

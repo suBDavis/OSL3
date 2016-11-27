@@ -236,8 +236,6 @@ int _insert (const char *string, size_t strlen, int32_t ip4_address,
             assert ((!parent) || (!left));
 
             if (node == root) {
-                new_node->next = node->next;
-                node->next = NULL;
                 root = new_node;
             } else if (parent) {
                 assert(parent->children == node);
@@ -386,6 +384,8 @@ _delete (struct trie_node *node, const char *string,
         }
     }
 }
+
+
 
 int delete  (const char *string, size_t strlen) {
     // Skip strings of length 0
