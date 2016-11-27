@@ -145,20 +145,12 @@ int search  (const char *string, size_t strlen, int32_t *ip4_address) {
     if (strlen == 0)
         return 0;
 
-    int err = pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
-    if (err)
-        printf("Failed to set cancel state: %d", err);
-
     pthread_mutex_lock(&mutex);
     found = _search(root, string, strlen);
 
     if (found && ip4_address)
         *ip4_address = found->ip4_address;
     pthread_mutex_unlock(&mutex);
-    err = pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
-    if (err)
-        printf("Failed to set cancel state: %d", err);
-    pthread_testcancel();
     return (found != NULL);
 }
 
@@ -296,10 +288,6 @@ int insert (const char *string, size_t strlen, int32_t ip4_address) {
     if (strlen == 0)
         return 0;
 
-    int err = pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
-    if (err)
-        printf("Failed to set cancel state: %d", err);
-
     pthread_mutex_lock(&mutex);
     int insert_res;
 
@@ -311,10 +299,6 @@ int insert (const char *string, size_t strlen, int32_t ip4_address) {
     if (node_count > max_count)
         pthread_cond_signal(&delete_cond);
     pthread_mutex_unlock(&mutex);
-    err = pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
-    if (err)
-        printf("Failed to set cancel state: %d", err);
-    pthread_testcancel();
     return insert_res;
 }
 
@@ -421,16 +405,9 @@ int delete  (const char *string, size_t strlen) {
     if (strlen == 0)
         return 0;
 
-    int err = pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
-    if (err)
-        printf("Failed to set cancel state: %d", err);
     pthread_mutex_lock(&mutex);
     struct trie_node *delete_result = _delete(root, string, strlen);
     pthread_mutex_unlock(&mutex);
-    err = pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
-    if (err)
-        printf("Failed to set cancel state: %d", err);
-    pthread_testcancel();
     return (NULL != delete_result);
 }
 
@@ -439,6 +416,7 @@ int delete  (const char *string, size_t strlen) {
  * Use any policy you like to select the node.
  */
 int drop_one_node() {
+    puts("test");
     struct trie_node *node = root;
     int size = 0;
 
@@ -468,18 +446,11 @@ int drop_one_node() {
 /* Check the total node count; see if we have exceeded a the max.
 */
 void check_max_nodes() {
-    int err = pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
-    if (err)
-        printf("Failed to set cancel state: %d", err);
     pthread_mutex_lock(&mutex);
     pthread_cond_wait(&delete_cond, &mutex);
     while (node_count > max_count)
         assert(drop_one_node());
     pthread_mutex_unlock(&mutex);
-    err = pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
-    if (err)
-        printf("Failed to set cancel state: %d", err);
-    pthread_testcancel();
 }
 
 
