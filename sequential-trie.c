@@ -384,8 +384,6 @@ _delete (struct trie_node *node, const char *string,
     }
 }
 
-
-
 int delete  (const char *string, size_t strlen) {
     // Skip strings of length 0
     if (strlen == 0)
@@ -393,7 +391,6 @@ int delete  (const char *string, size_t strlen) {
 
     return (NULL != _delete(root, string, strlen));
 }
-
 
 /* Find one node to remove from the tree. 
  *  * Use any policy you like to select the node.
@@ -422,7 +419,6 @@ int drop_one_node() {
     return res;
 }
 
-
 /* Check the total node count; see if we have exceeded a the max.
 */
 void check_max_nodes() {
@@ -430,14 +426,13 @@ void check_max_nodes() {
         drop_one_node();
 }
 
-
 void _print (struct trie_node *node, int depth, char lines[100]) {
     printf("%s", lines);
     if (!node->next)
         printf("└");
     else
         printf("├");
-    printf ("%.*s, IP %d.  This %p  Next %p, Children %p\n",
+    printf ("%.*s, IP %d, This %p, Next %p, Children %p\n",
             node->strlen, node->key, node->ip4_address, node, node->next, node->children);
     if (node->children) {
         if (node->next)
@@ -449,7 +444,6 @@ void _print (struct trie_node *node, int depth, char lines[100]) {
     if (node->next)
         _print(node->next, depth, lines);
 }
-
 
 void print() {
     printf ("Root is at %p\n", root);

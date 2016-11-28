@@ -20,6 +20,8 @@ struct trie_node {
 static struct trie_node * root = NULL;
 static int node_count = 0;
 static int max_count = 100;  //Try to stay under 100 nodes
+static pthread_mutex_t delete_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t delete_cond = PTHREAD_COND_INITIALIZER;
 
 struct trie_node * new_leaf (const char *string, size_t strlen, int32_t ip4_address) {
     struct trie_node *new_node = malloc(sizeof(struct trie_node));
@@ -39,6 +41,9 @@ struct trie_node * new_leaf (const char *string, size_t strlen, int32_t ip4_addr
     int err = pthread_mutex_init(&(new_node->mutex), NULL);
     if (err)
         printf("Failed to initialize mutex: %d\n", err);
+    pthread_mutex_lock(&(new_node->mutex));
+    if (node_count >= max_count)
+        pthread_cond_signal(&delete_cond);
 
     return new_node;
 }
@@ -138,7 +143,6 @@ _search (struct trie_node *node, const char *string, size_t strlen) {
         }
     }
 }
-
 
 int search  (const char *string, size_t strlen, int32_t *ip4_address) {
     struct trie_node *found;
@@ -389,8 +393,6 @@ _delete (struct trie_node *node, const char *string,
     }
 }
 
-
-
 int delete  (const char *string, size_t strlen) {
     // Skip strings of length 0
     if (strlen == 0)
@@ -398,7 +400,6 @@ int delete  (const char *string, size_t strlen) {
 
     return (NULL != _delete(root, string, strlen));
 }
-
 
 /* Find one node to remove from the tree. 
  *  * Use any policy you like to select the node.
@@ -427,14 +428,15 @@ int drop_one_node() {
     return res;
 }
 
-
 /* Check the total node count; see if we have exceeded a the max.
 */
 void check_max_nodes() {
+    pthread_mutex_lock(&delete_mutex);
+    pthread_cond_wait(&delete_cond, &delete_mutex);
     while (node_count > max_count)
         drop_one_node();
+    pthread_mutex_unlock(&delete_mutex);
 }
-
 
 void _print (struct trie_node *node, int depth, char lines[100]) {
     printf("%s", lines);
@@ -442,7 +444,7 @@ void _print (struct trie_node *node, int depth, char lines[100]) {
         printf("└");
     else
         printf("├");
-    printf ("%.*s, IP %d.  This %p  Next %p, Children %p\n",
+    printf ("%.*s, IP %d, This %p, Next %p, Children %p\n",
             node->strlen, node->key, node->ip4_address, node, node->next, node->children);
     if (node->children) {
         if (node->next)
@@ -454,7 +456,6 @@ void _print (struct trie_node *node, int depth, char lines[100]) {
     if (node->next)
         _print(node->next, depth, lines);
 }
-
 
 void print() {
     printf ("Root is at %p\n", root);
