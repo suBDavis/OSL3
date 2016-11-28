@@ -407,27 +407,18 @@ int delete  (const char *string, size_t strlen) {
  */
 int drop_one_node() {
     struct trie_node *node = root;
-    int size = 0;
-
-    // Find the end of some string.
-    do {
-        size += node->strlen;
-    } while ((node = node->children));
-    node = root;
     assert(node->key != NULL);
-    char *key = malloc(size + 1);
+    //should be 64, but trie is broken and the sum of some strlens is greater than 64
+    int size = 100;
+    char key[size+1];
     key[size] = '\0';
     do {
         assert(node->key != NULL);
         size -= node->strlen;
-        memcpy(key + size, node->key, node->strlen);
+        memcpy(&key[size], node->key, node->strlen);
     } while ((node = node->children));
-
     assert(node == NULL);
-    int res = (_delete(root, key, strlen(key)) != NULL);
-
-    free(key);
-    return res;
+    return (_delete(root, &key[size], strlen(&key[size])) != NULL);
 }
 
 /* Check the total node count; see if we have exceeded a the max.

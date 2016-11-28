@@ -85,7 +85,7 @@ client(void *arg)
             }
         }
 
-        DEBUG_PRINT ("Random string is %s\n", buf);
+        DEBUG_PRINT ("Random string of length %d is %s\n", length, buf);
 
 
         switch (code % 3) {

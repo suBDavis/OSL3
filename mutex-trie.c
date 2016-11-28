@@ -63,6 +63,8 @@ int compare_keys (const char *string1, int len1, const char *string2, int len2, 
     } else
         keylen = len1; // == len2
 
+    assert(keylen < 64);
+
     assert (keylen > 0);
     if (pKeylen)
         *pKeylen = keylen;
@@ -280,6 +282,8 @@ int insert (const char *string, size_t strlen, int32_t ip4_address) {
     if (strlen == 0)
         return 0;
 
+    assert(strlen < 64);
+
     pthread_mutex_lock(&mutex);
     int insert_res;
 
@@ -406,27 +410,18 @@ int delete  (const char *string, size_t strlen) {
  */
 int drop_one_node() {
     struct trie_node *node = root;
-    int size = 0;
-
-    // Find the end of some string.
-    do {
-        size += node->strlen;
-    } while ((node = node->children));
-    node = root;
     assert(node->key != NULL);
-    char *key = malloc(size + 1);
+    //should be 64, but trie is broken and the sum of some strlens is greater than 64
+    int size = 100;
+    char key[size+1];
     key[size] = '\0';
     do {
         assert(node->key != NULL);
         size -= node->strlen;
-        memcpy(key + size, node->key, node->strlen);
+        memcpy(&key[size], node->key, node->strlen);
     } while ((node = node->children));
-
     assert(node == NULL);
-    int res = (_delete(root, key, strlen(key)) != NULL);
-
-    free(key);
-    return res;
+    return (_delete(root, &key[size], strlen(&key[size])) != NULL);
 }
 
 /* Check the total node count; see if we have exceeded a the max.
@@ -436,6 +431,7 @@ void check_max_nodes() {
     pthread_cond_wait(&delete_cond, &mutex);
     while (node_count > max_count)
         assert(drop_one_node());
+    assert(node_count <= max_count);
     pthread_mutex_unlock(&mutex);
 }
 
@@ -465,3 +461,4 @@ void print() {
     if (root)
         _print(root, 0, lines);
 }
+
