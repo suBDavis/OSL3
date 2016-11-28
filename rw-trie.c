@@ -145,17 +145,13 @@ int search (const char *string, size_t strlen, int32_t *ip4_address) {
     if (strlen == 0)
         return 0;
 
-    printf("SEARCH WAIT\n");
     pthread_rwlock_rdlock(&rwlock);
-    printf("SEARCH AQUIRE\n");
-
     found = _search(root, string, strlen);
 
     if (found && ip4_address)
         *ip4_address = found->ip4_address;
 
     pthread_rwlock_unlock(&rwlock);
-    printf("SEARCH RELEASE\n");
     return (found != NULL);
 }
 
@@ -294,9 +290,7 @@ int insert (const char *string, size_t strlen, int32_t ip4_address) {
 
     int insert_res;
 
-    printf("INSERT WAIT\n");
     pthread_rwlock_wrlock(&rwlock);
-    printf("INSERT AQUIRE\n");
 
     /* Edge case: root is null */
     if (root == NULL) {
@@ -305,7 +299,6 @@ int insert (const char *string, size_t strlen, int32_t ip4_address) {
     } else insert_res = _insert(string, strlen, ip4_address, root, NULL, NULL);
 
     pthread_rwlock_unlock(&rwlock);
-    printf("INSERT RELEASE\n");
     return insert_res;
 }
 
@@ -410,12 +403,9 @@ int delete  (const char *string, size_t strlen) {
     // Skip strings of length 0
     if (strlen == 0)
         return 0;
-    printf("DELETE WAIT\n");
     pthread_rwlock_wrlock(&rwlock);
-    printf("DELETE AQUIRE\n");
     struct trie_node *delete_result = _delete(root, string, strlen);
     pthread_rwlock_unlock(&rwlock);
-    printf("DELETE RELEASE\n");
     return (NULL != delete_result);
 }
 

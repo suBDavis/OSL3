@@ -86,7 +86,6 @@ void init(int numthreads) {
 }
 
 void shutdown_delete_thread() {
-    // Don't need to do anything in the sequential case.
     return;
 }
 
