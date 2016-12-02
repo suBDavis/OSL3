@@ -107,7 +107,7 @@ void init(int numthreads) {
 }
 
 void shutdown_delete_thread() {
-    // Don't need to do anything in the sequential case.
+    pthread_cond_signal(&delete_cond);
     return;
 }
 
@@ -413,10 +413,14 @@ int insert (const char *string, size_t strlen, int32_t ip4_address) {
  * parent, or what should be the parent if not found.
  * 
  */
-struct trie_node *
+struct trie_node * 
 _delete (struct trie_node *node, const char *string, 
-        size_t strlen) {
+         size_t strlen) {
     int keylen, cmp;
+
+    /* Locking note:
+     * When _delete is called, node->mutex should ALREADY BE LOCKED 
+     */
 
     // First things first, check if we are NULL 
     if (node == NULL) return NULL;
@@ -430,44 +434,68 @@ _delete (struct trie_node *node, const char *string,
 
         // If this key is longer than our search string, the key isn't here
         if (node->strlen > keylen) {
-            if (node->prev_mutex) {
-                pthread_mutex_unlock(node->prev_mutex);
-                node->prev_mutex = NULL;
-            }
+            pthread_mutex_unlock(&(node->mutex));
             return NULL;
         } else if (strlen > keylen) {
+            
+            /* Locking note:
+             * 1. set child's parent mutex to current node mutex.
+             * 2. lock the child's mutex.
+
+             */
+            if (node->children)
+            {
+                node->children->prev_mutex = &(node->mutex);
+                pthread_mutex_lock(&(node->children->mutex));
+            }
+
             struct trie_node *found =  _delete(node->children, string, strlen - keylen);
+            /* After the above returns, the lock on node->children should be free again. */
+            
             if (found) {
                 /* If the node doesn't have children, delete it.
                  * Otherwise, keep it around to find the kids */
                 if (found->children == NULL && found->ip4_address == 0) {
+
                     assert(node->children == found);
                     node->children = found->next;
+
+                    /* Locking note:
+                     * Since we are freeing the current node, the parent must be locked.
+                     * That's why unlocking is safe here.
+                     */
+                    pthread_mutex_unlock(&(node->mutex));
+
                     free(found);
+                    found = NULL; // Added by brandon - this is just good practice.
                     node_count--;
                 }
-
+    
                 /* Delete the root node if we empty the tree */
                 if (node == root && node->children == NULL && node->ip4_address == 0) {
+                    /* Locking note:
+                     * Since we are changing the root, we must aquire the lock on root->next
+                     */
+                    pthread_mutex_lock(&(node->next->mutex));
                     root = node->next;
+                    pthread_mutex_unlock(&(node->mutex));
                     free(node);
+                    node = NULL; // Set pointers to null after freeing.
                     node_count--;
-                }
+                    
+                    /* It's safe to release the root lock now */
+                    pthread_mutex_unlock(&(root->mutex));
 
-                if (node->prev_mutex) {
-                    pthread_mutex_unlock(node->prev_mutex);
-                    node->prev_mutex = NULL;
+                    /* No locks held right now. That's probably fine. */
                 }
-
+    
+                /* Avoid double free or null pointer exception */
+                if (node)
+                    pthread_mutex_unlock(&(node->mutex));
                 return node; /* Recursively delete needless interior nodes */
-            } else {
-
-                if (node->prev_mutex) {
-                    pthread_mutex_unlock(node->prev_mutex);
-                    node->prev_mutex = NULL;
-                }
+            } else 
+                pthread_mutex_unlock(&(node->mutex));
                 return NULL;
-            }
         } else {
             assert (strlen == keylen);
 
@@ -475,27 +503,33 @@ _delete (struct trie_node *node, const char *string,
             if (node->ip4_address) {
                 node->ip4_address = 0;
 
-                if (node->prev_mutex) {
-                    pthread_mutex_unlock(node->prev_mutex);
-                    node->prev_mutex = NULL;
-                }
-
                 /* Delete the root node if we empty the tree */
                 if (node == root && node->children == NULL && node->ip4_address == 0) {
+
+                    /* to change the root, aquire a lock first */
+                    pthread_mutex_lock(&(node->next->mutex));
                     root = node->next;
+                    /* Release the old root lock */
+                    pthread_mutex_unlock(&(node->mutex));
                     free(node);
+                    node = NULL;
                     node_count--;
+                    /* unlock the root */
+                    pthread_mutex_unlock(&(root->mutex));
                     return (struct trie_node *) 0x100100; /* XXX: Don't use this pointer for anything except 
                                                            * comparison with NULL, since the memory is freed.
                                                            * Return a "poison" pointer that will probably 
                                                            * segfault if used.
                                                            */
+                } else {
+                    if (node)
+                        pthread_mutex_unlock(&(node->mutex));
+                    return node;
                 }
-                pthread_mutex_unlock(&(node->mutex));
-                return node;
             } else {
                 /* Just an interior node with no value */
-                pthread_mutex_unlock(&(node->mutex));
+                if (node)
+                    pthread_mutex_unlock(&(node->mutex));
                 return NULL;
             }
         }
@@ -504,41 +538,29 @@ _delete (struct trie_node *node, const char *string,
         cmp = compare_keys (node->key, node->strlen, string, strlen, &keylen);
         if (cmp < 0) {
             // No, look right (the node's key is "less" than  the search key)
-
+            /* Lock note:
+             * We must lock the next node
+             */
             pthread_mutex_lock(&(node->next->mutex));
             struct trie_node *found = _delete(node->next, string, strlen);
+
             if (found) {
                 /* If the node doesn't have children, delete it.
                  * Otherwise, keep it around to find the kids */
                 if (found->children == NULL && found->ip4_address == 0) {
                     assert(node->next == found);
                     node->next = found->next;
-                    if (found->prev_mutex) {
-                        pthread_mutex_unlock(found->prev_mutex);
-                        found->prev_mutex = NULL;
-                    }
                     free(found);
                     node_count--;
-                }
-                if (node->prev_mutex) {
-                    pthread_mutex_unlock(node->prev_mutex);
-                    node->prev_mutex = NULL;
-                }
+                }       
+                
                 pthread_mutex_unlock(&(node->mutex));
                 return node; /* Recursively delete needless interior nodes */
-            }
-            if (node->prev_mutex) {
-                pthread_mutex_unlock(node->prev_mutex);
-                node->prev_mutex = NULL;
             }
             pthread_mutex_unlock(&(node->mutex));
             return NULL;
         } else {
             // Quit early
-            if (node->prev_mutex) {
-                pthread_mutex_unlock(node->prev_mutex);
-                node->prev_mutex = NULL;
-            }
             pthread_mutex_unlock(&(node->mutex));
             return NULL;
         }
@@ -577,6 +599,7 @@ int drop_one_node() {
             pthread_mutex_unlock(&(par->mutex));
     } while ((node = node->children));
     assert(node == NULL);
+    pthread_mutex_lock(&(root->mutex));
     return (_delete(root, &key[size], strlen(&key[size])) != NULL);
 }
 
