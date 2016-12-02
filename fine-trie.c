@@ -464,10 +464,7 @@ _delete (struct trie_node *node, const char *string,
                      * Since we are freeing the current node, the parent must be locked.
                      * That's why unlocking is safe here.
                      */
-                    pthread_mutex_unlock(&(node->mutex));
-
                     free(found);
-                    found = NULL; // Added by brandon - this is just good practice.
                     node_count--;
                 }
     
@@ -476,22 +473,23 @@ _delete (struct trie_node *node, const char *string,
                     /* Locking note:
                      * Since we are changing the root, we must aquire the lock on root->next
                      */
-                    pthread_mutex_lock(&(node->next->mutex));
+                    if (node->next)
+                        pthread_mutex_lock(&(node->next->mutex));
+
                     root = node->next;
                     pthread_mutex_unlock(&(node->mutex));
                     free(node);
-                    node = NULL; // Set pointers to null after freeing.
                     node_count--;
                     
                     /* It's safe to release the root lock now */
-                    pthread_mutex_unlock(&(root->mutex));
+                    if (root)
+                        pthread_mutex_unlock(&(root->mutex));
 
                     /* No locks held right now. That's probably fine. */
-                }
-    
-                /* Avoid double free or null pointer exception */
-                if (node)
+                }else {
                     pthread_mutex_unlock(&(node->mutex));
+                }
+
                 return node; /* Recursively delete needless interior nodes */
             } else 
                 pthread_mutex_unlock(&(node->mutex));
@@ -541,7 +539,9 @@ _delete (struct trie_node *node, const char *string,
             /* Lock note:
              * We must lock the next node
              */
-            pthread_mutex_lock(&(node->next->mutex));
+            if (node->next)
+                pthread_mutex_lock(&(node->next->mutex));
+
             struct trie_node *found = _delete(node->next, string, strlen);
 
             if (found) {
