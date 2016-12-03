@@ -43,7 +43,7 @@ fig 1.      |  fig. 2
 
 ```
 
-If ASDF were deleted from the above tree at the same time as ABC were being inserted, it is possible that the trie structure of fig 1. could be swept out from under BC, leaving a NULL root and an orphaned BC.
+If ASDF were deleted from the above trie (and locks are denoted by `*`) at the same time as ABC were being inserted, it is possible that the trie structure of fig 1. could be swept out from under BC, leaving a NULL root and an orphaned BC.
 
 
 Extra credit attempted:
