@@ -1,6 +1,3 @@
-/* -*- mode:c; c-file-style:"k&r"; c-basic-offset: 4; tab-width:4; indent-tabs-mode:nil; mode:auto-fill; fill-column:78; -*- */
-/* vim: set ts=4 sw=4 et tw=78 fo=cqt wm=0: */
-
 /* Multi-threaded DNS-like Simulation.
  * 
  * Don Porter - porter@cs.unc.edu
@@ -22,8 +19,6 @@ int separate_delete_thread = 0;
 int simulation_length = 30; // default to 30 seconds
 volatile int finished = 0;
 
-// Uncomment this line for debug printing
-#define DEBUG 1
 #ifdef DEBUG
 #define DEBUG_PRINT(...) printf(__VA_ARGS__)
 #else
@@ -38,6 +33,8 @@ delete_thread(void *arg) {
     return NULL;
 }
 
+int32_t global_salt = 0;
+int use_global_salt = 0;
 
     static void *
 client(void *arg)
@@ -45,6 +42,11 @@ client(void *arg)
     struct random_data rd;
     char rand_state[256];
     int32_t salt = time(0);
+
+    if (use_global_salt)
+        salt = global_salt;
+
+    DEBUG_PRINT("Salt is %d\n", salt);
 
     // See http://lists.debian.org/debian-glibc/2006/01/msg00037.html
     rd.state = (int32_t*)rand_state;
@@ -57,8 +59,8 @@ client(void *arg)
         /* Pick a random operation, string, and ip */
         int32_t code;
         int rv = random_r(&rd, &code);
-        int length = (code >> 2) & (64-1);
-        char buf[64];
+        int length = (code >> 2) & (MAX_KEY-1);
+        char buf[MAX_KEY];
         int j;
         int32_t ip4_addr;
 
@@ -71,7 +73,7 @@ client(void *arg)
             continue;
 
         DEBUG_PRINT("Length is %d\n", length);
-        memset(buf, 0, 64);
+        memset(buf, 0, MAX_KEY);
         /* Generate a random string in lowercase */
         for (j = 0; j < length; j+= 6) {
             int i;
@@ -301,32 +303,27 @@ int self_tests() {
 
     // Kent tests
     printf("\n\n\n");
-    INSERT_TEST("numzzspbjwnjdgtzhzpkgykdzgirnzkfohvhkergirzbzwefzowgz",
-            strlen("numzzspbjwnjdgtzhzpkgykdzgirnzkfohvhkergirzbzwefzowgz"), 1);
+    INSERT_TEST("numzzspbjwnjdgtzhzpkgykdzgirnzkfohvhkergirzbzwefzowgz", strlen("numzzspbjwnjdgtzhzpkgykdzgirnzkfohvhkergirzbzwefzowgz"), 1);
     INSERT_TEST("zxkczzudhzmzqhsu", strlen("zxkczzudhzmzqhsu"), 2);
     INSERT_TEST("z", 1, 2);
     print();
-    INSERT_TEST("wkwyqpoozzvbrznkbtmyhmzyuaczlxhmyoonkhjavzbwkrzz",
-            strlen("wkwyqpoozzvbrznkbtmyhmzyuaczlxhmyoonkhjavzbwkrzz"), 3);
+    INSERT_TEST("wkwyqpoozzvbrznkbtmyhmzyuaczlxhmyoonkhjavzbwkrzz", strlen("wkwyqpoozzvbrznkbtmyhmzyuaczlxhmyoonkhjavzbwkrzz"), 3);
     print();
-    SEARCH_TEST("wkwyqpoozzvbrznkbtmyhmzyuaczlxhmyoonkhjavzbwkrzz",
-            strlen("wkwyqpoozzvbrznkbtmyhmzyuaczlxhmyoonkhjavzbwkrzz"), 3);
+    SEARCH_TEST("wkwyqpoozzvbrznkbtmyhmzyuaczlxhmyoonkhjavzbwkrzz", strlen("wkwyqpoozzvbrznkbtmyhmzyuaczlxhmyoonkhjavzbwkrzz"), 3);
 
-    INSERT_TEST("twnobkfdzcpwzgfzdh",
-            strlen("twnobkfdzcpwzgfzdh"), 4);
+    INSERT_TEST("twnobkfdzcpwzgfzdh", strlen("twnobkfdzcpwzgfzdh"), 4);
     print();
-    INSERT_TEST("qdssbllupsqsszvzoqlzkziozwncodvez",
-            strlen("qdssbllupsqsszvzoqlzkziozwncodvez"), 5);
-    DELETE_TEST("numzzspbjwnjdgtzhzpkgykdzgirnzkfohvhkergirzbzwefzowgz",
-            strlen("numzzspbjwnjdgtzhzpkgykdzgirnzkfohvhkergirzbzwefzowgz"));
+    INSERT_TEST("qdssbllupsqsszvzoqlzkziozwncodvez", strlen("qdssbllupsqsszvzoqlzkziozwncodvez"), 5);
+    DELETE_TEST("numzzspbjwnjdgtzhzpkgykdzgirnzkfohvhkergirzbzwefzowgz", strlen("numzzspbjwnjdgtzhzpkgykdzgirnzkfohvhkergirzbzwefzowgz"));
     print();
     INSERT_TEST("zzzz", 4, 6);
     print();
-    DELETE_TEST("zxkczzudhzmzqhsu", strlen("zxkczzudhzmzqhsu"));
+    DELETE_TEST("zxkczzudhzmzqhsu", strlen("zxkczzudhzmzqhsu"));    
     print();
     INSERT_TEST("azbz", 4, 7);
 
-    // Test delete thread
+
+    //Test delete thread
     if (separate_delete_thread) {
         srandom(time(0));
         int ins_count = 0;
@@ -378,7 +375,7 @@ int self_tests() {
             }
             if (insert(buf, length, ip4_addr)) ++ins_count;
         }
-        sleep(1);
+        sleep(5);
         printf("\nNode count after %d inserts and a sleep: %d\n", ins_count, num_nodes());
         assert(num_nodes() <= 100);
         delete_all_nodes();
@@ -431,14 +428,12 @@ int self_tests() {
             node_count = num_nodes();
             if (node_count > 90) break;
         }
-        sleep(1);
+        sleep(5);
         printf("\nNode count after %d inserts and a sleep: %d\n\n", ins_count, num_nodes());
         assert(num_nodes() <= 100);
         assert(num_nodes() == node_count);
         delete_all_nodes();
-        assert(num_nodes() == 0);
     }
-
 
     printf("End of self-tests, tree is:\n");
     print();
@@ -464,8 +459,7 @@ int main(int argc, char ** argv) {
     // Read options from command line:
     //   # clients from command line, as well as seed file
     //   Simulation length
-    //   Block if a name is already taken ("Squat")
-    while ((c = getopt (argc, argv, "c:hl:t")) != -1) {
+    while ((c = getopt (argc, argv, "c:hl:s:t")) != -1) {
         switch (c) {
             case 'c':
                 numthreads = atoi(optarg);
@@ -475,6 +469,10 @@ int main(int argc, char ** argv) {
                 return 0;
             case 'l':
                 simulation_length = atoi(optarg);
+                break;
+            case 's':
+                use_global_salt = 1;
+                global_salt = atoi(optarg);
                 break;
             case 't':
                 separate_delete_thread = 1;

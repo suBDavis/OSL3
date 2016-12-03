@@ -6,6 +6,10 @@
 
 /* A simple (reverse) trie interface */
 
+#define MAX_KEY 64
+// Uncomment this line for debug printing
+#define DEBUG 1
+
 /* Optional init routine.  May not be required. */
 void init (int numthreads);
 
@@ -41,10 +45,8 @@ void print ();
  */
 extern int allow_squatting;
 
-/* Get node count for testing */
+/* functions for testing in main */
 int num_nodes();
-
-/* Delete all nodes for testing */
 void delete_all_nodes();
 
 

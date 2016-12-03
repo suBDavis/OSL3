@@ -12,7 +12,7 @@ struct trie_node {
     unsigned int strlen; /* Length of the key */
     int32_t ip4_address; /* 4 octets */
     struct trie_node *children; /* Sorted list of children */
-    char key[64]; /* Up to 64 chars */
+    char key[MAX_KEY]; /* Up to MAX_KEY chars */
 };
 
 static struct trie_node * root = NULL;
@@ -27,7 +27,7 @@ struct trie_node * new_leaf (const char *string, size_t strlen, int32_t ip4_addr
         printf ("WARNING: Node memory allocation failed.  Results may be bogus.\n");
         return NULL;
     }
-    assert(strlen < 64);
+    assert(strlen < MAX_KEY);
     assert(strlen > 0);
     new_node->next = NULL;
     new_node->strlen = strlen;
@@ -53,7 +53,7 @@ int reverse_strncmp(const char *left, const char *right, size_t n)
 
 int compare_keys (const char *string1, int len1, const char *string2, int len2, int *pKeylen) {
     int keylen, offset;
-    char scratch[64];
+    char scratch[MAX_KEY];
     assert (len1 > 0);
     assert (len2 > 0);
     // Take the max of the two keys, treating the front as if it were 
@@ -115,7 +115,7 @@ _search (struct trie_node *node, const char *string, size_t strlen) {
     // First things first, check if we are NULL 
     if (node == NULL) return NULL;
 
-    assert(node->strlen < 64);
+    assert(node->strlen < MAX_KEY);
 
     // See if this key is a substring of the string passed in
     cmp = compare_keys_substring(node->key, node->strlen, string, strlen, &keylen);
@@ -172,7 +172,7 @@ int _insert (const char *string, size_t strlen, int32_t ip4_address,
 
     // First things first, check if we are NULL 
     assert (node != NULL);
-    assert (node->strlen < 64);
+    assert (node->strlen < MAX_KEY);
 
     // Take the minimum of the two lengths
     cmp = compare_keys_substring (node->key, node->strlen, string, strlen, &keylen);
@@ -190,6 +190,8 @@ int _insert (const char *string, size_t strlen, int32_t ip4_address,
             new_node = new_leaf (string, strlen, ip4_address);
             node->strlen -= keylen;
             new_node->children = node;
+            new_node->next = node->next;
+            node->next = NULL;
 
             assert ((!parent) || (!left));
 
@@ -289,6 +291,8 @@ int _insert (const char *string, size_t strlen, int32_t ip4_address,
     }
 }
 
+void assert_invariants();
+
 int insert (const char *string, size_t strlen, int32_t ip4_address) {
 
     // Skip strings of length 0
@@ -305,6 +309,7 @@ int insert (const char *string, size_t strlen, int32_t ip4_address) {
         insert_res = 1;
     } else insert_res = _insert(string, strlen, ip4_address, root, NULL, NULL);
 
+    assert_invariants();
     pthread_rwlock_unlock(&rwlock);
     return insert_res;
 }
@@ -323,7 +328,7 @@ _delete (struct trie_node *node, const char *string,
     // First things first, check if we are NULL 
     if (node == NULL) return NULL;
 
-    assert(node->strlen < 64);
+    assert(node->strlen < MAX_KEY);
 
     // See if this key is a substring of the string passed in
     cmp = compare_keys_substring (node->key, node->strlen, string, strlen, &keylen);
@@ -411,6 +416,7 @@ int delete  (const char *string, size_t strlen) {
         return 0;
     pthread_rwlock_wrlock(&rwlock);
     struct trie_node *delete_result = _delete(root, string, strlen);
+    assert_invariants();
     pthread_rwlock_unlock(&rwlock);
     return (NULL != delete_result);
 }
@@ -421,13 +427,13 @@ int delete  (const char *string, size_t strlen) {
 int drop_one_node() {
     struct trie_node *node = root;
     assert(node->key != NULL);
-    //should be 64, but trie is broken and the sum of some strlens is greater than 64
-    int size = 100;
+    int size = MAX_KEY-1;
     char key[size+1];
     key[size] = '\0';
     do {
         assert(node->key != NULL);
         size -= node->strlen;
+        assert(size >= 0);
         memcpy(&key[size], node->key, node->strlen);
     } while ((node = node->children));
     assert(node == NULL);
@@ -492,5 +498,43 @@ void print() {
 
 int num_nodes() {
     return node_count;
+}
+
+int _assert_invariants (struct trie_node *node, int prefix_length, int *error) {
+    int count = 1;
+
+    int len = prefix_length + node->strlen;
+    if (len > MAX_KEY) {
+        printf("key too long at node %p.  Key %.*s (%d), IP %d.  Next %p, Children %p\n", 
+                node, node->strlen, node->key, node->strlen, node->ip4_address, node->next, node->children);
+        *error = 1;
+        return count;
+    }
+
+    if (node->children) {
+        count += _assert_invariants(node->children, len, error);
+        if (*error) {
+            printf("Unwinding tree on error: node %p.  Key %.*s (%d), IP %d.  Next %p, Children %p\n", 
+                    node, node->strlen, node->key, node->strlen, node->ip4_address, node->next, node->children);
+            return count;
+        }
+    }
+
+    if (node->next) {
+        count += _assert_invariants(node->next, prefix_length, error);
+    }
+
+    return count;
+}
+
+void assert_invariants () {
+#ifdef DEBUG    
+    int err = 0;
+    if (root) {
+        int count = _assert_invariants(root, 0, &err);
+        if (err) print();
+        assert(count == node_count);
+    }
+#endif // DEBUG    
 }
 
