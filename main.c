@@ -38,6 +38,7 @@ delete_thread(void *arg) {
     return NULL;
 }
 
+
     static void *
 client(void *arg)
 {
@@ -53,7 +54,6 @@ client(void *arg)
     initstate_r(salt, rand_state, sizeof(rand_state), &rd);
 
     while (!finished) {
-        puts("mainfuck");
         /* Pick a random operation, string, and ip */
         int32_t code;
         int rv = random_r(&rd, &code);
@@ -115,7 +115,6 @@ client(void *arg)
             default:
                 assert(0);
         }
-        puts("mainfuuuuck");
 
         /* If we don't have a separate delete thread, the client needs to
          * make sure that the count didn't exceed the max.
@@ -153,40 +152,32 @@ client(void *arg)
 int self_tests() {
     int rv;
     int32_t ip = 0;
-puts("self_tests1");
+
     rv = insert ("abc", 3, 4);
     if (!rv) die ("Failed to insert key abc\n");
 
-puts("self_tests2");
     rv = delete("abc", 3);
     if (!rv) die ("Failed to delete key abc\n");
     print();
 
-puts("self_tests3");
     rv = insert ("google", 6, 5);
     if (!rv) die ("Failed to insert key google\n");
 
-puts("self_tests4");
     rv = insert ("goggle", 6, 4);
     if (!rv) die ("Failed to insert key goggle\n");
 
-puts("self_tests5");
     rv = delete("goggle", 6);
     if (!rv) die ("Failed to delete key goggle\n");
 
-puts("self_tests6");
     rv = delete("google", 6);
     if (!rv) die ("Failed to delete key google\n");
 
-puts("self_tests7");
     rv = insert ("ab", 2, 2);
     if (!rv) die ("Failed to insert key ab\n");
 
-puts("self_tests8");
     rv = insert("bb", 2, 2);
     if (!rv) die ("Failed to insert key bb\n");
 
-puts("self_tests9");
     print();
     printf("So far so good\n\n");
 
@@ -393,9 +384,9 @@ int main(int argc, char ** argv) {
     }
 
     // Run the self-tests if we are in debug mode 
-//#ifdef DEBUG
-//    self_tests();
-//#endif
+#ifdef DEBUG
+    self_tests();
+#endif
 
     // Launch client threads
     for (i = 0; i < numthreads; i++) {
