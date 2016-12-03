@@ -322,6 +322,7 @@ int self_tests() {
     print();
     INSERT_TEST("azbz", 4, 7);
 
+    /*
     //Test delete thread
     if (separate_delete_thread) {
         srandom(time(0));
@@ -349,7 +350,6 @@ int self_tests() {
                 continue;
 
             memset(buf, 0, 64);
-            /* Generate a random string in lowercase */
             for (j = 0; j < length; j+= 6) {
                 int i;
                 int32_t chars;
@@ -400,7 +400,6 @@ int self_tests() {
                 continue;
 
             memset(buf, 0, 64);
-            /* Generate a random string in lowercase */
             for (j = 0; j < length; j+= 6) {
                 int i;
                 int32_t chars;
@@ -433,6 +432,7 @@ int self_tests() {
         assert(num_nodes() == node_count);
         delete_all_nodes();
     }
+*/
 
     printf("End of self-tests, tree is:\n");
     print();

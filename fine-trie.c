@@ -115,6 +115,7 @@ void shutdown_delete_thread() {
 struct trie_node * 
 _search (struct trie_node *node, const char *string, size_t strlen) {
 
+    puts("test3");
     int keylen, cmp;
 
     // First things first, check if we are NULL 
@@ -194,21 +195,21 @@ int search  (const char *string, size_t strlen, int32_t *ip4_address) {
     if (strlen == 0)
         return 0;
 
-    pthread_mutex_lock(&delete_mutex);
     pthread_mutex_lock(&root_mutex);
+    puts("test");
     if (!root) {
         pthread_mutex_unlock(&root_mutex);
-        pthread_mutex_unlock(&delete_mutex);
         return 0;
     }
     pthread_mutex_unlock(&root_mutex);
+    puts("test4");
     pthread_mutex_lock(&(root->mutex));
+    puts("test2");
     found = _search(root, string, strlen);
 
     if (found && ip4_address)
         *ip4_address = found->ip4_address;
 
-    pthread_mutex_unlock(&delete_mutex);
     return (found != NULL);
 }
 
@@ -390,21 +391,18 @@ int insert (const char *string, size_t strlen, int32_t ip4_address) {
     if (strlen == 0)
         return 0;
 
-    pthread_mutex_lock(&delete_mutex);
     pthread_mutex_lock(&root_mutex);
     /* Edge case: root is null */
     if (root == NULL) {
         root = new_leaf (string, strlen, ip4_address);
         pthread_mutex_unlock(&root_mutex);
-        pthread_mutex_unlock(&delete_mutex);
         return 1;
     }
     pthread_mutex_unlock(&root_mutex);
     pthread_mutex_lock(&(root->mutex));
     int res = _insert (string, strlen, ip4_address, root, NULL, NULL);
-    pthread_mutex_unlock(&delete_mutex);
     assert_invariants();
-   if (node_count >= max_count)
+    if (node_count >= max_count)
         pthread_cond_signal(&delete_cond);
     return res;
 }
@@ -572,18 +570,14 @@ _delete (struct trie_node *node, const char *string,
 
 int delete  (const char *string, size_t strlen) {
     // Skip strings of length 0
-    pthread_mutex_lock(&delete_mutex);
     pthread_mutex_lock(&root_mutex);
     if (strlen == 0 || !root) {
         pthread_mutex_unlock(&root_mutex);
-        pthread_mutex_unlock(&delete_mutex);
         return 0;
     }
     pthread_mutex_unlock(&root_mutex);
-
     pthread_mutex_lock(&(root->mutex));
     int res = (NULL != _delete(root, string, strlen));
-    pthread_mutex_unlock(&delete_mutex);
     assert_invariants();
     return res;
 }
@@ -604,6 +598,7 @@ int drop_one_node() {
         memcpy(&key[size], node->key, node->strlen);
     } while ((node = node->children));
     assert(node == NULL);
+    pthread_mutex_lock(&root->mutex);
     return (_delete(root, &key[size], strlen(&key[size])) != NULL);
 }
 
@@ -612,18 +607,20 @@ int drop_one_node() {
 void check_max_nodes() {
     pthread_mutex_lock(&delete_mutex);
     pthread_cond_wait(&delete_cond, &delete_mutex);
+    pthread_mutex_lock(&root_mutex);
     while (node_count > max_count)
         drop_one_node();
     assert(node_count <= max_count);
+    pthread_mutex_unlock(&root_mutex);
     pthread_mutex_unlock(&delete_mutex);
 }
 
 void delete_all_nodes() {
-    pthread_mutex_lock(&delete_mutex);
+    pthread_mutex_lock(&root_mutex);
     while (node_count)
         drop_one_node();
     assert(node_count == 0);
-    pthread_mutex_unlock(&delete_mutex);
+    pthread_mutex_unlock(&root_mutex);
 }
 
 int _print(struct trie_node *node, int depth, char lines[100], int count) {
@@ -694,14 +691,14 @@ int _assert_invariants (struct trie_node *node, int prefix_length, int *error) {
 
 void assert_invariants () {
 #ifdef DEBUG
-    pthread_mutex_lock(&delete_mutex);
+    pthread_mutex_lock(&root_mutex);
     int err = 0;
     if (root) {
         int count = _assert_invariants(root, 0, &err);
         if (err) print();
         assert(count == node_count);
     }
-    pthread_mutex_unlock(&delete_mutex);
+    pthread_mutex_unlock(&root_mutex);
 #endif // DEBUG
 }
 

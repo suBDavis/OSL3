@@ -18,7 +18,9 @@ struct trie_node {
 static struct trie_node * root = NULL;
 static int node_count = 0;
 static int max_count = 100;  //Try to stay under 100 nodes
+static pthread_mutex_t delete_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_rwlock_t rwlock = PTHREAD_RWLOCK_INITIALIZER;
+static pthread_cond_t delete_cond = PTHREAD_COND_INITIALIZER;
 
 struct trie_node * new_leaf (const char *string, size_t strlen, int32_t ip4_address) {
     struct trie_node *new_node = malloc(sizeof(struct trie_node));
@@ -311,6 +313,8 @@ int insert (const char *string, size_t strlen, int32_t ip4_address) {
 
     assert_invariants();
     pthread_rwlock_unlock(&rwlock);
+    if (node_count > max_count)
+        pthread_cond_signal(&delete_cond);
     return insert_res;
 }
 
@@ -443,16 +447,14 @@ int drop_one_node() {
 /* Check the total node count; see if we have exceeded a the max.
 */
 void check_max_nodes() {
-    /*
-       UNSUPPORTED CONDITIONAL WAIT
-       not possible with RWLOCK, unless we implement ourselves.
-       no need for setting the exit state.
-       */
+    pthread_mutex_lock(&delete_mutex);
+    pthread_cond_wait(&delete_cond, &delete_mutex);
     pthread_rwlock_wrlock(&rwlock);
     while (node_count > max_count)
         assert(drop_one_node());
     assert(node_count <= max_count);
     pthread_rwlock_unlock(&rwlock);
+    pthread_mutex_unlock(&delete_mutex);
 }
 
 void delete_all_nodes() {
