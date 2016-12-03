@@ -106,7 +106,7 @@ void shutdown_delete_thread() {
     if (separate_delete_thread)
         // sleep briefly before signaling, so that any last inserts may finish.
         usleep(100000); // .1 seconds
-        pthread_cond_signal(&delete_cond);
+    pthread_cond_signal(&delete_cond);
     return;
 }
 
@@ -155,11 +155,11 @@ _search (struct trie_node *node, const char *string, size_t strlen) {
             return _search(node->children, string, strlen - keylen);
         } else {
             assert (strlen == keylen);
-            pthread_mutex_unlock(&(node->mutex));
             if (node->prev_mutex) {
                 pthread_mutex_unlock(node->prev_mutex);
                 node->prev_mutex = NULL;
             }
+            pthread_mutex_unlock(&(node->mutex));
             return node;
         }
 
@@ -183,10 +183,6 @@ _search (struct trie_node *node, const char *string, size_t strlen) {
                 node->prev_mutex = NULL;
             }
             pthread_mutex_unlock(&(node->mutex));
-            if (node->prev_mutex) {
-                pthread_mutex_unlock(node->prev_mutex);
-                node->prev_mutex = NULL;
-            }
             return 0;
         }
     }
@@ -205,9 +201,8 @@ int search  (const char *string, size_t strlen, int32_t *ip4_address) {
         pthread_mutex_unlock(&root_mutex);
         return 0;
     }
-    pthread_mutex_unlock(&root_mutex);
-    puts("test4");
     pthread_mutex_lock(&(root->mutex));
+    pthread_mutex_unlock(&root_mutex);
     puts("test2");
     found = _search(root, string, strlen);
 
@@ -229,7 +224,9 @@ int _insert (const char *string, size_t strlen, int32_t ip4_address,
 
     // Take the minimum of the two lengths
     cmp = compare_keys_substring (node->key, node->strlen, string, strlen, &keylen);
+    puts("_instest");
     if (cmp == 0) {
+    puts("_instest1");
         // Yes, either quit, or recur on the children
 
         // If this key is longer than our search string, we need to insert
@@ -304,6 +301,7 @@ int _insert (const char *string, size_t strlen, int32_t ip4_address,
         }
 
     } else {
+    puts("_instest2");
         /* Is there any common substring? */
         int i, cmp2, keylen2, overlap = 0;
         for (i = 1; i < keylen; i++) {
@@ -317,6 +315,7 @@ int _insert (const char *string, size_t strlen, int32_t ip4_address,
         }
 
         if (overlap) {
+    puts("_instest3");
             // Insert a common parent, recur
             int offset = strlen - keylen2;
             struct trie_node *new_node = new_leaf (&string[offset], keylen2, 0);
@@ -346,9 +345,11 @@ int _insert (const char *string, size_t strlen, int32_t ip4_address,
             return _insert(string, offset, ip4_address,
                     node, new_node, NULL);
         } else {
+    puts("_instest4");
             cmp = compare_keys (node->key, node->strlen, string, strlen, &keylen);
             if (cmp < 0) {
                 // No, recur right (the node's key is "less" than  the search key)
+    puts("_instest5");
                 if (node->next) {
                     pthread_mutex_lock(&(node->next->mutex));
                     if (parent)
@@ -369,6 +370,7 @@ int _insert (const char *string, size_t strlen, int32_t ip4_address,
                 }
             } else {
                 // Insert here
+    puts("_instest6");
                 struct trie_node *new_node = new_leaf (string, strlen, ip4_address);
                 new_node->next = node;
                 if (node == root)
@@ -379,11 +381,13 @@ int _insert (const char *string, size_t strlen, int32_t ip4_address,
                     left->next = new_node;
             }
         }
+    puts("_instest7");
         if (parent)
             pthread_mutex_unlock(&(parent->mutex));
         if (left)
             pthread_mutex_unlock(&(left->mutex));
         pthread_mutex_unlock(&(node->mutex));
+    puts("_instest8");
         return 1;
     }
 }
@@ -395,19 +399,26 @@ int insert (const char *string, size_t strlen, int32_t ip4_address) {
     if (strlen == 0)
         return 0;
 
+    puts("instest");
     pthread_mutex_lock(&root_mutex);
+    int res;
+    puts("instest1");
     /* Edge case: root is null */
     if (root == NULL) {
         root = new_leaf (string, strlen, ip4_address);
         pthread_mutex_unlock(&root_mutex);
-        return 1;
+        res = 1;
+    } else {
+        pthread_mutex_lock(&(root->mutex));
+        puts("instest2");
+        pthread_mutex_unlock(&root_mutex);
+        res = _insert (string, strlen, ip4_address, root, NULL, NULL);
     }
-    pthread_mutex_unlock(&root_mutex);
-    pthread_mutex_lock(&(root->mutex));
-    int res = _insert (string, strlen, ip4_address, root, NULL, NULL);
     assert_invariants();
-    if (node_count >= max_count  && separate_delete_thread)
+    if (node_count >= max_count  && separate_delete_thread) {
+        pthread_mutex_lock(&root->mutex);
         pthread_cond_signal(&delete_cond);
+    }
     return res;
 }
 
@@ -425,6 +436,7 @@ _delete (struct trie_node *node, const char *string,
     /* Locking note:
      * When _delete is called, node->mutex should ALREADY BE LOCKED 
      */
+    puts("_deletetest");
 
     // First things first, check if we are NULL 
     if (node == NULL) return NULL;
@@ -434,6 +446,7 @@ _delete (struct trie_node *node, const char *string,
     // See if this key is a substring of the string passed in
     cmp = compare_keys_substring (node->key, node->strlen, string, strlen, &keylen);
     if (cmp == 0) {
+    puts("_deletetest1");
         // Yes, either quit, or recur on the children
 
         // If this key is longer than our search string, the key isn't here
@@ -447,12 +460,10 @@ _delete (struct trie_node *node, const char *string,
              * 2. lock the child's mutex.
              */
 
-            struct trie_node *found = NULL;
-            if (node->children) {
+            if (node->children)
                 pthread_mutex_lock(&(node->children->mutex));
-                found =  _delete(node->children, string, strlen - keylen);
-            }
 
+            struct trie_node *found =  _delete(node->children, string, strlen - keylen);
             /* After the above returns, the lock on node->children should be free again. */
 
             if (found) {
@@ -489,7 +500,7 @@ _delete (struct trie_node *node, const char *string,
                         pthread_mutex_unlock(&(root->mutex));
 
                     /* No locks held right now. That's probably fine. */
-                }else {
+                } else {
                     pthread_mutex_unlock(&(node->mutex));
                 }
 
@@ -537,18 +548,18 @@ _delete (struct trie_node *node, const char *string,
         }
 
     } else {
+        puts("_deletetest2");
         cmp = compare_keys (node->key, node->strlen, string, strlen, &keylen);
         if (cmp < 0) {
+            puts("_deletetest3");
             // No, look right (the node's key is "less" than  the search key)
             /* Lock note:
              * We must lock the next node
              */
-            struct trie_node *found = NULL;
-            if (node->next) {
+            if (node->next)
                 pthread_mutex_lock(&(node->next->mutex));
-                found = _delete(node->next, string, strlen);
-            }
 
+            struct trie_node *found = _delete(node->next, string, strlen);
             if (found) {
                 /* If the node doesn't have children, delete it.
                  * Otherwise, keep it around to find the kids */
@@ -565,6 +576,7 @@ _delete (struct trie_node *node, const char *string,
             pthread_mutex_unlock(&(node->mutex));
             return NULL;
         } else {
+            puts("_deletetest4");
             // Quit early
             pthread_mutex_unlock(&(node->mutex));
             return NULL;
@@ -575,13 +587,16 @@ _delete (struct trie_node *node, const char *string,
 int delete  (const char *string, size_t strlen) {
     // Skip strings of length 0
     pthread_mutex_lock(&root_mutex);
+    puts("deletetest");
     if (strlen == 0 || !root) {
         pthread_mutex_unlock(&root_mutex);
         return 0;
     }
-    pthread_mutex_unlock(&root_mutex);
     pthread_mutex_lock(&(root->mutex));
+    puts("deletetest1");
+    pthread_mutex_unlock(&root_mutex);
     int res = (NULL != _delete(root, string, strlen));
+    puts("deletetest2");
     assert_invariants();
     return res;
 }
@@ -603,17 +618,20 @@ int drop_one_node() {
     } while ((node = node->children));
     assert(node == NULL);
     pthread_mutex_lock(&root->mutex);
+    puts("dontest");
     return (_delete(root, &key[size], strlen(&key[size])) != NULL);
 }
 
 
 /* Check the total node count; see if we have exceeded a the max. */
 void check_max_nodes() {
+    puts("cmntest");
     pthread_mutex_lock(&delete_mutex);
-    pthread_cond_wait(&delete_cond, &delete_mutex);
-    pthread_mutex_lock(&root_mutex);
+    puts("cmntest1");
     if (separate_delete_thread)
         pthread_cond_wait(&delete_cond, &delete_mutex);
+    else (pthread_mutex_lock(&root_mutex));
+    puts("cmntest2");
     while (node_count > max_count)
         drop_one_node();
     assert(node_count <= max_count);
@@ -672,6 +690,8 @@ int _assert_invariants (struct trie_node *node, int prefix_length, int *error) {
     int count = 1;
 
     int len = prefix_length + node->strlen;
+    //assert(!pthread_mutex_trylock(&(node->mutex)));
+    //pthread_mutex_unlock(&(node->mutex));
     if (len > MAX_KEY) {
         printf("key too long at node %p.  Key %.*s (%d), IP %d.  Next %p, Children %p\n", 
                 node, node->strlen, node->key, node->strlen, node->ip4_address, node->next, node->children);
