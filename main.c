@@ -1,3 +1,6 @@
+/* -*- mode:c; c-file-style:"k&r"; c-basic-offset: 4; tab-width:4; indent-tabs-mode:nil; mode:auto-fill; fill-column:78; -*- */
+/* vim: set ts=4 sw=4 et tw=78 fo=cqt wm=0: */
+
 /* Multi-threaded DNS-like Simulation.
  * 
  * Don Porter - porter@cs.unc.edu
@@ -20,7 +23,7 @@ int simulation_length = 30; // default to 30 seconds
 volatile int finished = 0;
 
 // Uncomment this line for debug printing
-//#define DEBUG 1
+#define DEBUG 1
 #ifdef DEBUG
 #define DEBUG_PRINT(...) printf(__VA_ARGS__)
 #else
@@ -36,7 +39,7 @@ delete_thread(void *arg) {
 }
 
 
-    static void *
+static void *
 client(void *arg)
 {
     struct random_data rd;
@@ -58,12 +61,15 @@ client(void *arg)
         char buf[64];
         int j;
         int32_t ip4_addr;
-
+    
         if (rv) {
             printf("Failed to get random number - %d\n", rv);
             return NULL;
         }
 
+        if (length == 0)
+            continue;
+            
         DEBUG_PRINT("Length is %d\n", length);
         memset(buf, 0, 64);
         /* Generate a random string in lowercase */
@@ -85,29 +91,29 @@ client(void *arg)
             }
         }
 
-        DEBUG_PRINT ("Random string of length %d is %s\n", length, buf);
-
+        DEBUG_PRINT ("Random string is %s\n", buf);
+    
 
         switch (code % 3) {
-            case 0: // Search
-                DEBUG_PRINT ("Search\n");
-                search (buf, length, NULL);
-                break;
-            case 1: // insert
-                DEBUG_PRINT ("insert\n");
-                rv = random_r(&rd, &ip4_addr);
-                if (rv) {
-                    printf("Failed to get random number - %d\n", rv);
-                    return NULL;
-                }
-                insert (buf, length, ip4_addr);
-                break;
-            case 2: // delete
-                DEBUG_PRINT ("delete\n");
-                delete (buf, length);
-                break;
-            default:
-                assert(0);
+        case 0: // Search
+            DEBUG_PRINT ("Search\n");
+            search (buf, length, NULL);
+            break;
+        case 1: // insert
+            DEBUG_PRINT ("insert\n");
+            rv = random_r(&rd, &ip4_addr);
+            if (rv) {
+                printf("Failed to get random number - %d\n", rv);
+                return NULL;
+            }
+            insert (buf, length, ip4_addr);
+            break;
+        case 2: // delete
+            DEBUG_PRINT ("delete\n");
+            delete (buf, length);
+            break;
+        default:
+            assert(0);
         }
 
         /* If we don't have a separate delete thread, the client needs to
@@ -121,27 +127,27 @@ client(void *arg)
 }
 
 
-#define die(msg) do {				\
-    print();					\
-    printf(msg);					\
-    exit(1);					\
-} while (0)
+#define die(msg) do {                           \
+        print();                                \
+        printf(msg);                            \
+        exit(1);                                \
+    } while (0)
 
-#define INSERT_TEST(ky, len, ip) do {		    \
-    rv = insert(ky, len, ip);			    \
-    if (!rv) die ("Failed to insert key " ky "\n"); \
-} while (0)					    
+#define INSERT_TEST(ky, len, ip) do {                   \
+        rv = insert(ky, len, ip);                       \
+        if (!rv) die ("Failed to insert key " ky "\n"); \
+    } while (0)					    
 
-#define SEARCH_TEST(ky, len, ex) do {				\
-    rv = search(ky, len, &ip);					\
-    if (!rv) die ("Failed fine insert key " ky "\n");		\
-    if (ip != ex) die ("Found bad IP for key " ky "\n");	\
-} while (0)					    
+#define SEARCH_TEST(ky, len, ex) do {                           \
+        rv = search(ky, len, &ip);                              \
+        if (!rv) die ("Failed fine insert key " ky "\n");		\
+        if (ip != ex) die ("Found bad IP for key " ky "\n");	\
+    } while (0)					    
 
-#define DELETE_TEST(ky, len) do {		    \
-    rv = delete(ky, len);			    \
-    if (!rv) die ("Failed to delete key " ky "\n"); \
-} while (0)					    
+#define DELETE_TEST(ky, len) do {                       \
+        rv = delete(ky, len);                           \
+        if (!rv) die ("Failed to delete key " ky "\n"); \
+    } while (0)					    
 
 int self_tests() {
     int rv;
@@ -165,7 +171,7 @@ int self_tests() {
 
     rv = delete("google", 6);
     if (!rv) die ("Failed to delete key google\n");
-
+  
     rv = insert ("ab", 2, 2);
     if (!rv) die ("Failed to insert key ab\n");
 
@@ -179,7 +185,7 @@ int self_tests() {
     printf("Rv is %d\n", rv);
     if (!rv) die ("Failed to find key ab\n");
     if (ip != 2) die ("Found bad IP for key ab\n");
-
+  
     rv = search("aa", 2, NULL);
     if (rv) die ("Found bogus key aa\n");
 
@@ -215,7 +221,7 @@ int self_tests() {
 
     rv = insert("xaaa", 4, 7);
     if (!rv) die ("Failed to insert key xaaa\n");
-
+  
     rv = search("cccc", 4, &ip);
     if (!rv) die ("Failed to find key cccc\n");
     if (ip != 6) die ("Found bad IP for key cccc\n");
@@ -257,7 +263,7 @@ int self_tests() {
     SEARCH_TEST("principle", 9, 12);
 
     print();
-
+  
     DELETE_TEST("google", 6);
     DELETE_TEST("com", 3);
     DELETE_TEST("edu", 3);
@@ -286,13 +292,9 @@ int self_tests() {
     SEARCH_TEST("eeonbws", 7, 2);
     SEARCH_TEST("zhriz", 5, 1); 
 
-
+  
     DELETE_TEST("mfpmirs", 7);
     DELETE_TEST("xzrtjbz", 7); 
-    DELETE_TEST("eeonbws", 7);
-    DELETE_TEST("zhriz", 5); 
-    DELETE_TEST("pzkvlyi", 7);
-
     DELETE_TEST("eeonbws", 7);
     DELETE_TEST("zhriz", 5); 
     DELETE_TEST("pzkvlyi", 7);
@@ -320,11 +322,6 @@ int self_tests() {
     printf("End of self-tests, tree is:\n");
     print();
     printf("End of self-tests\n");
-
-
-    printf("End of self-tests, tree is:\n");
-    print();
-    printf("End of self-tests\n");
     return 0;
 }
 
@@ -349,22 +346,22 @@ int main(int argc, char ** argv) {
     //   Block if a name is already taken ("Squat")
     while ((c = getopt (argc, argv, "c:hl:t")) != -1) {
         switch (c) {
-            case 'c':
-                numthreads = atoi(optarg);
-                break;
-            case 'h':
-                help();
-                return 0;
-            case 'l':
-                simulation_length = atoi(optarg);
-                break;
-            case 't':
-                separate_delete_thread = 1;
-                break;
-            default:
-                printf ("Unknown option\n");
-                help();
-                return 1;
+        case 'c':
+            numthreads = atoi(optarg);
+            break;
+        case 'h':
+            help();
+            return 0;
+        case 'l':
+            simulation_length = atoi(optarg);
+            break;
+        case 't':
+            separate_delete_thread = 1;
+            break;
+        default:
+            printf ("Unknown option\n");
+            help();
+            return 1;
         }
     }
 
@@ -373,28 +370,31 @@ int main(int argc, char ** argv) {
     init(numthreads);
     srandom(time(0));
 
+    tinfo = calloc(numthreads + separate_delete_thread, sizeof(pthread_t));
+
+    // Create the delete thread before running the self tests, just in case
+    // someone wants to test against it
+    if (separate_delete_thread) {
+        rv = pthread_create(&tinfo[numthreads], NULL,
+                            &delete_thread, NULL);
+        if (rv != 0) {
+            printf ("Delete thread creation failed %d\n", rv);
+            return rv;
+        }
+    }
+
     // Run the self-tests if we are in debug mode 
 #ifdef DEBUG
     self_tests();
 #endif
 
     // Launch client threads
-    tinfo = calloc(numthreads + separate_delete_thread, sizeof(pthread_t));
     for (i = 0; i < numthreads; i++) {
 
         rv = pthread_create(&tinfo[i], NULL,
-                &client, NULL);
+                            &client, NULL);
         if (rv != 0) {
             printf ("Thread creation failed %d\n", rv);
-            return rv;
-        }
-    }
-
-    if (separate_delete_thread) {
-        rv = pthread_create(&tinfo[numthreads], NULL,
-                &delete_thread, NULL);
-        if (rv != 0) {
-            printf ("Delete thread creation failed %d\n", rv);
             return rv;
         }
     }
@@ -419,6 +419,6 @@ int main(int argc, char ** argv) {
     /* Print the final tree for fun */
     print();
 #endif
-
+  
     return 0;
 }
