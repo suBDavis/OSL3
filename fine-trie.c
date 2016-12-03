@@ -24,6 +24,7 @@ static int max_count = 100;  //Try to stay under 100 nodes
 static pthread_mutex_t delete_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t root_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t delete_cond = PTHREAD_COND_INITIALIZER;
+extern int separate_delete_thread;
 
 struct trie_node * new_leaf (const char *string, size_t strlen, int32_t ip4_address) {
     struct trie_node *new_node = malloc(sizeof(struct trie_node));
@@ -102,7 +103,10 @@ void init(int numthreads) {
 }
 
 void shutdown_delete_thread() {
-    pthread_cond_signal(&delete_cond);
+    if (separate_delete_thread)
+        // sleep briefly before signaling, so that any last inserts may finish.
+        usleep(100000); // .1 seconds
+        pthread_cond_signal(&delete_cond);
     return;
 }
 
@@ -402,7 +406,7 @@ int insert (const char *string, size_t strlen, int32_t ip4_address) {
     pthread_mutex_lock(&(root->mutex));
     int res = _insert (string, strlen, ip4_address, root, NULL, NULL);
     assert_invariants();
-    if (node_count >= max_count)
+    if (node_count >= max_count  && separate_delete_thread)
         pthread_cond_signal(&delete_cond);
     return res;
 }
@@ -608,6 +612,8 @@ void check_max_nodes() {
     pthread_mutex_lock(&delete_mutex);
     pthread_cond_wait(&delete_cond, &delete_mutex);
     pthread_mutex_lock(&root_mutex);
+    if (separate_delete_thread)
+        pthread_cond_wait(&delete_cond, &delete_mutex);
     while (node_count > max_count)
         drop_one_node();
     assert(node_count <= max_count);
