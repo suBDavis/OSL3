@@ -38,8 +38,7 @@ delete_thread(void *arg) {
     return NULL;
 }
 
-
-static void *
+    static void *
 client(void *arg)
 {
     struct random_data rd;
@@ -61,7 +60,7 @@ client(void *arg)
         char buf[64];
         int j;
         int32_t ip4_addr;
-    
+
         if (rv) {
             printf("Failed to get random number - %d\n", rv);
             return NULL;
@@ -69,7 +68,7 @@ client(void *arg)
 
         if (length == 0)
             continue;
-            
+
         DEBUG_PRINT("Length is %d\n", length);
         memset(buf, 0, 64);
         /* Generate a random string in lowercase */
@@ -92,35 +91,35 @@ client(void *arg)
         }
 
         DEBUG_PRINT ("Random string is %s\n", buf);
-    
+
 
         switch (code % 3) {
-        case 0: // Search
-            DEBUG_PRINT ("Search\n");
-            search (buf, length, NULL);
-            break;
-        case 1: // insert
-            DEBUG_PRINT ("insert\n");
-            rv = random_r(&rd, &ip4_addr);
-            if (rv) {
-                printf("Failed to get random number - %d\n", rv);
-                return NULL;
-            }
-            insert (buf, length, ip4_addr);
-            break;
-        case 2: // delete
-            DEBUG_PRINT ("delete\n");
-            delete (buf, length);
-            break;
-        default:
-            assert(0);
+            case 0: // Search
+                DEBUG_PRINT ("Search\n");
+                search (buf, length, NULL);
+                break;
+            case 1: // insert
+                DEBUG_PRINT ("insert\n");
+                rv = random_r(&rd, &ip4_addr);
+                if (rv) {
+                    printf("Failed to get random number - %d\n", rv);
+                    return NULL;
+                }
+                insert (buf, length, ip4_addr);
+                break;
+            case 2: // delete
+                DEBUG_PRINT ("delete\n");
+                delete (buf, length);
+                break;
+            default:
+                assert(0);
         }
 
         /* If we don't have a separate delete thread, the client needs to
          * make sure that the count didn't exceed the max.
          */
-        if (!separate_delete_thread)
-            check_max_nodes();
+        //if (!separate_delete_thread)
+        //    check_max_nodes();
     }
 
     return NULL;
@@ -128,56 +127,64 @@ client(void *arg)
 
 
 #define die(msg) do {                           \
-        print();                                \
-        printf(msg);                            \
-        exit(1);                                \
-    } while (0)
+    print();                                \
+    printf(msg);                            \
+    exit(1);                                \
+} while (0)
 
 #define INSERT_TEST(ky, len, ip) do {                   \
-        rv = insert(ky, len, ip);                       \
-        if (!rv) die ("Failed to insert key " ky "\n"); \
-    } while (0)					    
+    rv = insert(ky, len, ip);                       \
+    if (!rv) die ("Failed to insert key " ky "\n"); \
+} while (0)					    
 
 #define SEARCH_TEST(ky, len, ex) do {                           \
-        rv = search(ky, len, &ip);                              \
-        if (!rv) die ("Failed fine insert key " ky "\n");		\
-        if (ip != ex) die ("Found bad IP for key " ky "\n");	\
-    } while (0)					    
+    rv = search(ky, len, &ip);                              \
+    if (!rv) die ("Failed fine insert key " ky "\n");		\
+    if (ip != ex) die ("Found bad IP for key " ky "\n");	\
+} while (0)					    
 
 #define DELETE_TEST(ky, len) do {                       \
-        rv = delete(ky, len);                           \
-        if (!rv) die ("Failed to delete key " ky "\n"); \
-    } while (0)					    
+    rv = delete(ky, len);                           \
+    if (!rv) die ("Failed to delete key " ky "\n"); \
+} while (0)					    
 
 int self_tests() {
     int rv;
     int32_t ip = 0;
-
+puts("self_tests1");
     rv = insert ("abc", 3, 4);
     if (!rv) die ("Failed to insert key abc\n");
 
+puts("self_tests2");
     rv = delete("abc", 3);
     if (!rv) die ("Failed to delete key abc\n");
     print();
 
+puts("self_tests3");
     rv = insert ("google", 6, 5);
     if (!rv) die ("Failed to insert key google\n");
 
+puts("self_tests4");
     rv = insert ("goggle", 6, 4);
     if (!rv) die ("Failed to insert key goggle\n");
 
+puts("self_tests5");
     rv = delete("goggle", 6);
     if (!rv) die ("Failed to delete key goggle\n");
 
+puts("self_tests6");
     rv = delete("google", 6);
     if (!rv) die ("Failed to delete key google\n");
-  
+
+puts("self_tests7");
     rv = insert ("ab", 2, 2);
     if (!rv) die ("Failed to insert key ab\n");
 
+puts("self_tests8");
     rv = insert("bb", 2, 2);
     if (!rv) die ("Failed to insert key bb\n");
 
+puts("self_tests9");
     print();
     printf("So far so good\n\n");
 
@@ -185,7 +192,7 @@ int self_tests() {
     printf("Rv is %d\n", rv);
     if (!rv) die ("Failed to find key ab\n");
     if (ip != 2) die ("Found bad IP for key ab\n");
-  
+
     rv = search("aa", 2, NULL);
     if (rv) die ("Found bogus key aa\n");
 
@@ -221,7 +228,7 @@ int self_tests() {
 
     rv = insert("xaaa", 4, 7);
     if (!rv) die ("Failed to insert key xaaa\n");
-  
+
     rv = search("cccc", 4, &ip);
     if (!rv) die ("Failed to find key cccc\n");
     if (ip != 6) die ("Found bad IP for key cccc\n");
@@ -263,7 +270,7 @@ int self_tests() {
     SEARCH_TEST("principle", 9, 12);
 
     print();
-  
+
     DELETE_TEST("google", 6);
     DELETE_TEST("com", 3);
     DELETE_TEST("edu", 3);
@@ -292,7 +299,7 @@ int self_tests() {
     SEARCH_TEST("eeonbws", 7, 2);
     SEARCH_TEST("zhriz", 5, 1); 
 
-  
+
     DELETE_TEST("mfpmirs", 7);
     DELETE_TEST("xzrtjbz", 7); 
     DELETE_TEST("eeonbws", 7);
@@ -346,22 +353,22 @@ int main(int argc, char ** argv) {
     //   Block if a name is already taken ("Squat")
     while ((c = getopt (argc, argv, "c:hl:t")) != -1) {
         switch (c) {
-        case 'c':
-            numthreads = atoi(optarg);
-            break;
-        case 'h':
-            help();
-            return 0;
-        case 'l':
-            simulation_length = atoi(optarg);
-            break;
-        case 't':
-            separate_delete_thread = 1;
-            break;
-        default:
-            printf ("Unknown option\n");
-            help();
-            return 1;
+            case 'c':
+                numthreads = atoi(optarg);
+                break;
+            case 'h':
+                help();
+                return 0;
+            case 'l':
+                simulation_length = atoi(optarg);
+                break;
+            case 't':
+                separate_delete_thread = 1;
+                break;
+            default:
+                printf ("Unknown option\n");
+                help();
+                return 1;
         }
     }
 
@@ -376,7 +383,7 @@ int main(int argc, char ** argv) {
     // someone wants to test against it
     if (separate_delete_thread) {
         rv = pthread_create(&tinfo[numthreads], NULL,
-                            &delete_thread, NULL);
+                &delete_thread, NULL);
         if (rv != 0) {
             printf ("Delete thread creation failed %d\n", rv);
             return rv;
@@ -384,15 +391,15 @@ int main(int argc, char ** argv) {
     }
 
     // Run the self-tests if we are in debug mode 
-#ifdef DEBUG
-    self_tests();
-#endif
+//#ifdef DEBUG
+//    self_tests();
+//#endif
 
     // Launch client threads
     for (i = 0; i < numthreads; i++) {
 
         rv = pthread_create(&tinfo[i], NULL,
-                            &client, NULL);
+                &client, NULL);
         if (rv != 0) {
             printf ("Thread creation failed %d\n", rv);
             return rv;
@@ -419,6 +426,6 @@ int main(int argc, char ** argv) {
     /* Print the final tree for fun */
     print();
 #endif
-  
+
     return 0;
 }
