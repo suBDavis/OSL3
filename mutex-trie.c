@@ -41,6 +41,18 @@ struct trie_node * new_leaf (const char *string, size_t strlen, int32_t ip4_addr
     return new_node;
 }
 
+// Compare strings backward.  Unlike strncmp, we assume
+// that we will not stop at a null termination, only after
+// n chars (or a difference).  Base code borrowed from musl
+int reverse_strncmp(const char *left, const char *right, size_t n)
+{
+    const unsigned char *l= (const unsigned char *) &left[n-1];
+    const unsigned char *r= (const unsigned char *) &right[n-1];
+    if (!n--) return 0;
+    for (; *l && *r && n && *l == *r ; l--, r--, n--);
+    return *l - *r;
+}
+
 int compare_keys (const char *string1, int len1, const char *string2, int len2, int *pKeylen) {
     int keylen, offset;
     char scratch[64];
@@ -62,13 +74,11 @@ int compare_keys (const char *string1, int len1, const char *string2, int len2, 
         string2 = scratch;
     } else
         keylen = len1; // == len2
-
-    assert(keylen < 64);
-
+      
     assert (keylen > 0);
     if (pKeylen)
         *pKeylen = keylen;
-    return strncmp(string1, string2, keylen);
+    return reverse_strncmp(string1, string2, keylen);
 }
 
 int compare_keys_substring (const char *string1, int len1, const char *string2, int len2, int *pKeylen) {
@@ -79,8 +89,9 @@ int compare_keys_substring (const char *string1, int len1, const char *string2, 
     assert (keylen > 0);
     if (pKeylen)
         *pKeylen = keylen;
-    return strncmp(&string1[offset1], &string2[offset2], keylen);
+    return reverse_strncmp(&string1[offset1], &string2[offset2], keylen);
 }
+
 
 void init(int numthreads) {
     root = NULL;

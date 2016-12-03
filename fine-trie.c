@@ -50,6 +50,18 @@ struct trie_node * new_leaf (const char *string, size_t strlen, int32_t ip4_addr
     return new_node;
 }
 
+// Compare strings backward.  Unlike strncmp, we assume
+// that we will not stop at a null termination, only after
+// n chars (or a difference).  Base code borrowed from musl
+int reverse_strncmp(const char *left, const char *right, size_t n)
+{
+    const unsigned char *l= (const unsigned char *) &left[n-1];
+    const unsigned char *r= (const unsigned char *) &right[n-1];
+    if (!n--) return 0;
+    for (; *l && *r && n && *l == *r ; l--, r--, n--);
+    return *l - *r;
+}
+
 int compare_keys (const char *string1, int len1, const char *string2, int len2, int *pKeylen) {
     int keylen, offset;
     char scratch[64];
@@ -71,11 +83,11 @@ int compare_keys (const char *string1, int len1, const char *string2, int len2, 
         string2 = scratch;
     } else
         keylen = len1; // == len2
-
+      
     assert (keylen > 0);
     if (pKeylen)
         *pKeylen = keylen;
-    return strncmp(string1, string2, keylen);
+    return reverse_strncmp(string1, string2, keylen);
 }
 
 int compare_keys_substring (const char *string1, int len1, const char *string2, int len2, int *pKeylen) {
@@ -86,8 +98,9 @@ int compare_keys_substring (const char *string1, int len1, const char *string2, 
     assert (keylen > 0);
     if (pKeylen)
         *pKeylen = keylen;
-    return strncmp(&string1[offset1], &string2[offset2], keylen);
+    return reverse_strncmp(&string1[offset1], &string2[offset2], keylen);
 }
+
 
 void init(int numthreads) {
     insert("google", 6, 0);
@@ -415,7 +428,7 @@ int insert (const char *string, size_t strlen, int32_t ip4_address) {
  */
 struct trie_node * 
 _delete (struct trie_node *node, const char *string, 
-         size_t strlen) {
+        size_t strlen) {
     int keylen, cmp;
 
     /* Locking note:
@@ -437,12 +450,12 @@ _delete (struct trie_node *node, const char *string,
             pthread_mutex_unlock(&(node->mutex));
             return NULL;
         } else if (strlen > keylen) {
-            
+
             /* Locking note:
              * 1. set child's parent mutex to current node mutex.
              * 2. lock the child's mutex.
 
-             */
+*/
             if (node->children)
             {
                 node->children->prev_mutex = &(node->mutex);
@@ -451,7 +464,7 @@ _delete (struct trie_node *node, const char *string,
 
             struct trie_node *found =  _delete(node->children, string, strlen - keylen);
             /* After the above returns, the lock on node->children should be free again. */
-            
+
             if (found) {
                 /* If the node doesn't have children, delete it.
                  * Otherwise, keep it around to find the kids */
@@ -467,7 +480,7 @@ _delete (struct trie_node *node, const char *string,
                     free(found);
                     node_count--;
                 }
-    
+
                 /* Delete the root node if we empty the tree */
                 if (node == root && node->children == NULL && node->ip4_address == 0) {
                     /* Locking note:
@@ -480,7 +493,7 @@ _delete (struct trie_node *node, const char *string,
                     pthread_mutex_unlock(&(node->mutex));
                     free(node);
                     node_count--;
-                    
+
                     /* It's safe to release the root lock now */
                     if (root)
                         pthread_mutex_unlock(&(root->mutex));
@@ -493,7 +506,7 @@ _delete (struct trie_node *node, const char *string,
                 return node; /* Recursively delete needless interior nodes */
             } else 
                 pthread_mutex_unlock(&(node->mutex));
-                return NULL;
+            return NULL;
         } else {
             assert (strlen == keylen);
 
@@ -553,7 +566,7 @@ _delete (struct trie_node *node, const char *string,
                     free(found);
                     node_count--;
                 }       
-                
+
                 pthread_mutex_unlock(&(node->mutex));
                 return node; /* Recursively delete needless interior nodes */
             }

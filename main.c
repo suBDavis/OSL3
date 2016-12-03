@@ -293,6 +293,35 @@ int self_tests() {
     DELETE_TEST("zhriz", 5); 
     DELETE_TEST("pzkvlyi", 7);
 
+    DELETE_TEST("eeonbws", 7);
+    DELETE_TEST("zhriz", 5); 
+    DELETE_TEST("pzkvlyi", 7);
+
+    // Kent tests
+    printf("\n\n\n");
+    INSERT_TEST("numzzspbjwnjdgtzhzpkgykdzgirnzkfohvhkergirzbzwefzowgz", strlen("numzzspbjwnjdgtzhzpkgykdzgirnzkfohvhkergirzbzwefzowgz"), 1);
+    INSERT_TEST("zxkczzudhzmzqhsu", strlen("zxkczzudhzmzqhsu"), 2);
+    INSERT_TEST("z", 1, 2);
+    print();
+    INSERT_TEST("wkwyqpoozzvbrznkbtmyhmzyuaczlxhmyoonkhjavzbwkrzz", strlen("wkwyqpoozzvbrznkbtmyhmzyuaczlxhmyoonkhjavzbwkrzz"), 3);
+    print();
+    SEARCH_TEST("wkwyqpoozzvbrznkbtmyhmzyuaczlxhmyoonkhjavzbwkrzz", strlen("wkwyqpoozzvbrznkbtmyhmzyuaczlxhmyoonkhjavzbwkrzz"), 3);
+
+    INSERT_TEST("twnobkfdzcpwzgfzdh", strlen("twnobkfdzcpwzgfzdh"), 4);
+    print();
+    INSERT_TEST("qdssbllupsqsszvzoqlzkziozwncodvez", strlen("qdssbllupsqsszvzoqlzkziozwncodvez"), 5);
+    DELETE_TEST("numzzspbjwnjdgtzhzpkgykdzgirnzkfohvhkergirzbzwefzowgz", strlen("numzzspbjwnjdgtzhzpkgykdzgirnzkfohvhkergirzbzwefzowgz"));
+    print();
+    INSERT_TEST("zzzz", 4, 6);
+    print();
+    DELETE_TEST("zxkczzudhzmzqhsu", strlen("zxkczzudhzmzqhsu"));    
+    print();
+    INSERT_TEST("azbz", 4, 7);
+    printf("End of self-tests, tree is:\n");
+    print();
+    printf("End of self-tests\n");
+
+
     printf("End of self-tests, tree is:\n");
     print();
     printf("End of self-tests\n");
