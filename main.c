@@ -53,6 +53,7 @@ client(void *arg)
     initstate_r(salt, rand_state, sizeof(rand_state), &rd);
 
     while (!finished) {
+        puts("mainfuck");
         /* Pick a random operation, string, and ip */
         int32_t code;
         int rv = random_r(&rd, &code);
@@ -114,12 +115,13 @@ client(void *arg)
             default:
                 assert(0);
         }
+        puts("mainfuuuuck");
 
         /* If we don't have a separate delete thread, the client needs to
          * make sure that the count didn't exceed the max.
          */
-        //if (!separate_delete_thread)
-        //    check_max_nodes();
+        if (!separate_delete_thread)
+            check_max_nodes();
     }
 
     return NULL;
