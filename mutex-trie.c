@@ -446,7 +446,7 @@ void check_max_nodes() {
     pthread_mutex_unlock(&mutex);
 }
 
-void _print (struct trie_node *node, int depth, char lines[100]) {
+int _print(struct trie_node *node, int depth, char lines[100], int count) {
     printf("%s", lines);
     if (!node->next)
         printf("└");
@@ -458,18 +458,24 @@ void _print (struct trie_node *node, int depth, char lines[100]) {
         if (node->next)
             strcat(lines, "| ");
         else strcat(lines, "  ");
-        _print(node->children, depth+1, lines);
+        count = _print(node->children, depth+1, lines, count+1);
         lines[2*depth] = '\0';
     }
     if (node->next)
-        _print(node->next, depth, lines);
+        count = _print(node->next, depth, lines, count+1);
+    return count;
 }
 
 void print() {
+    pthread_mutex_lock(&mutex);
     printf ("Root is at %p\n", root);
     char lines[100];
     lines[0] = '\0';
+    int count = 0;
     if (root)
-        _print(root, 0, lines);
+        count = _print(root, 0, lines, 1);
+    printf("node_count: %d\nActual node count: %d\n", node_count, count);
+    assert(count == node_count);
+    pthread_mutex_unlock(&mutex);
 }
 

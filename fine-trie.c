@@ -44,8 +44,6 @@ struct trie_node * new_leaf (const char *string, size_t strlen, int32_t ip4_addr
     int err = pthread_mutex_init(&(new_node->mutex), NULL);
     if (err)
         printf("Failed to initialize mutex: %d\n", err);
-
-
     return new_node;
 }
 
@@ -440,15 +438,14 @@ _delete (struct trie_node *node, const char *string,
             /* Locking note:
              * 1. set child's parent mutex to current node mutex.
              * 2. lock the child's mutex.
+             */
 
-*/
-            if (node->children)
-            {
-                node->children->prev_mutex = &(node->mutex);
+            struct trie_node *found = NULL;
+            if (node->children) {
                 pthread_mutex_lock(&(node->children->mutex));
+                found =  _delete(node->children, string, strlen - keylen);
             }
 
-            struct trie_node *found =  _delete(node->children, string, strlen - keylen);
             /* After the above returns, the lock on node->children should be free again. */
 
             if (found) {
@@ -490,8 +487,7 @@ _delete (struct trie_node *node, const char *string,
                 }
 
                 return node; /* Recursively delete needless interior nodes */
-            } else 
-                pthread_mutex_unlock(&(node->mutex));
+            } else pthread_mutex_unlock(&(node->mutex));
             return NULL;
         } else {
             assert (strlen == keylen);
@@ -540,10 +536,11 @@ _delete (struct trie_node *node, const char *string,
             /* Lock note:
              * We must lock the next node
              */
-            if (node->next)
+            struct trie_node *found = NULL;
+            if (node->next) {
                 pthread_mutex_lock(&(node->next->mutex));
-
-            struct trie_node *found = _delete(node->next, string, strlen);
+                found = _delete(node->next, string, strlen);
+            }
 
             if (found) {
                 /* If the node doesn't have children, delete it.
@@ -553,7 +550,7 @@ _delete (struct trie_node *node, const char *string,
                     node->next = found->next;
                     free(found);
                     node_count--;
-                }       
+                }
 
                 pthread_mutex_unlock(&(node->mutex));
                 return node; /* Recursively delete needless interior nodes */
@@ -582,6 +579,7 @@ int delete  (const char *string, size_t strlen) {
     pthread_mutex_lock(&(root->mutex));
     int res = (NULL != _delete(root, string, strlen));
     pthread_mutex_unlock(&delete_mutex);
+    printf("node_count: %d\n", node_count);
     return res;
 }
 
@@ -615,7 +613,7 @@ void check_max_nodes() {
     pthread_mutex_unlock(&delete_mutex);
 }
 
-void _print (struct trie_node *node, int depth, char lines[100]) {
+int _print(struct trie_node *node, int depth, char lines[100], int count) {
     printf("%s", lines);
     if (!node->next)
         printf("└");
@@ -627,18 +625,23 @@ void _print (struct trie_node *node, int depth, char lines[100]) {
         if (node->next)
             strcat(lines, "| ");
         else strcat(lines, "  ");
-        _print(node->children, depth+1, lines);
+        count = _print(node->children, depth+1, lines, count+1);
         lines[2*depth] = '\0';
     }
     if (node->next)
-        _print(node->next, depth, lines);
+        count = _print(node->next, depth, lines, count+1);
+    return count;
 }
 
 void print() {
+    pthread_mutex_lock(&root_mutex);
     printf ("Root is at %p\n", root);
     char lines[100];
     lines[0] = '\0';
+    int count = 0;
     if (root)
-        _print(root, 0, lines);
+        count = _print(root, 0, lines, 1);
+    printf("node_count: %d\nActual node count: %d\n", node_count, count);
+    assert(count == node_count);
+    pthread_mutex_unlock(&root_mutex);
 }
-
