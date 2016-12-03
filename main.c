@@ -322,7 +322,6 @@ int self_tests() {
     print();
     INSERT_TEST("azbz", 4, 7);
 
-
     //Test delete thread
     if (separate_delete_thread) {
         srandom(time(0));
@@ -375,7 +374,7 @@ int self_tests() {
             }
             if (insert(buf, length, ip4_addr)) ++ins_count;
         }
-        sleep(5);
+        sleep(1);
         printf("\nNode count after %d inserts and a sleep: %d\n", ins_count, num_nodes());
         assert(num_nodes() <= 100);
         delete_all_nodes();
@@ -428,7 +427,7 @@ int self_tests() {
             node_count = num_nodes();
             if (node_count > 90) break;
         }
-        sleep(5);
+        sleep(1);
         printf("\nNode count after %d inserts and a sleep: %d\n\n", ins_count, num_nodes());
         assert(num_nodes() <= 100);
         assert(num_nodes() == node_count);

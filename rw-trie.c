@@ -491,7 +491,9 @@ void print() {
     int count = 0;
     if (root)
         count = _print(root, 0, lines, 1);
+#ifdef DEBUG
     printf("node_count: %d\nActual node count: %d\n", node_count, count);
+#endif
     assert(count == node_count);
     pthread_rwlock_unlock(&rwlock);
 }

@@ -307,10 +307,10 @@ int insert (const char *string, size_t strlen, int32_t ip4_address) {
         root = new_leaf(string, strlen, ip4_address);
         insert_res = 1;
     } else insert_res = _insert(string, strlen, ip4_address, root, NULL, NULL);
-    if (node_count > max_count)
-        pthread_cond_signal(&delete_cond);
     assert_invariants();
     pthread_mutex_unlock(&mutex);
+    if (node_count > max_count)
+        pthread_cond_signal(&delete_cond);
     return insert_res;
 }
 
@@ -488,7 +488,9 @@ void print() {
     int count = 0;
     if (root)
         count = _print(root, 0, lines, 1);
+#ifdef DEBUG
     printf("node_count: %d\nActual node count: %d\n", node_count, count);
+#endif
     assert(count == node_count);
     pthread_mutex_unlock(&mutex);
 }

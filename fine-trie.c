@@ -402,10 +402,10 @@ int insert (const char *string, size_t strlen, int32_t ip4_address) {
     pthread_mutex_unlock(&root_mutex);
     pthread_mutex_lock(&(root->mutex));
     int res = _insert (string, strlen, ip4_address, root, NULL, NULL);
-    if (node_count >= max_count)
-        pthread_cond_signal(&delete_cond);
     pthread_mutex_unlock(&delete_mutex);
     assert_invariants();
+   if (node_count >= max_count)
+        pthread_cond_signal(&delete_cond);
     return res;
 }
 
@@ -654,7 +654,9 @@ void print() {
     int count = 0;
     if (root)
         count = _print(root, 0, lines, 1);
+#ifdef DEBUG
     printf("node_count: %d\nActual node count: %d\n", node_count, count);
+#endif
     assert(count == node_count);
     pthread_mutex_unlock(&root_mutex);
 }
