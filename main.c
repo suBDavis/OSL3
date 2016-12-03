@@ -335,7 +335,8 @@ int self_tests() {
         int32_t salt = time(0);
         rd.state = (int32_t*)rand_state;
         initstate_r(salt, rand_state, sizeof(rand_state), &rd);
-        for (int k = 0; k < 1000; ++k) {
+        int k;
+        for (k = 0; k < 1000; ++k) {
             int32_t code;
             int rv = random_r(&rd, &code);
             int length = (code >> 2) & (64-1);
@@ -386,7 +387,7 @@ int self_tests() {
         //Insert less than 100, ensure no deletions
         int node_count = 0;
         ins_count = 0;
-        for (int k = 0; k < 90; ++k) {
+        for (k = 0; k < 90; ++k) {
             int32_t code;
             int rv = random_r(&rd, &code);
             int length = (code >> 2) & (64-1);
