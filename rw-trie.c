@@ -445,7 +445,15 @@ void check_max_nodes() {
     pthread_rwlock_wrlock(&rwlock);
     while (node_count > max_count)
         assert(drop_one_node());
+    assert(node_count <= max_count);
+    pthread_rwlock_unlock(&rwlock);
+}
 
+void delete_all_nodes() {
+    pthread_rwlock_wrlock(&rwlock);
+    while (node_count)
+        assert(drop_one_node());
+    assert(node_count == 0);
     pthread_rwlock_unlock(&rwlock);
 }
 
@@ -470,7 +478,7 @@ int _print(struct trie_node *node, int depth, char lines[100], int count) {
 }
 
 void print() {
-    pthread_rwlock_rdlock(&rwlock);
+    pthread_rwlock_wrlock(&rwlock);
     printf ("Root is at %p\n", root);
     char lines[100];
     lines[0] = '\0';
@@ -480,5 +488,9 @@ void print() {
     printf("node_count: %d\nActual node count: %d\n", node_count, count);
     assert(count == node_count);
     pthread_rwlock_unlock(&rwlock);
+}
+
+int num_nodes() {
+    return node_count;
 }
 

@@ -579,7 +579,6 @@ int delete  (const char *string, size_t strlen) {
     pthread_mutex_lock(&(root->mutex));
     int res = (NULL != _delete(root, string, strlen));
     pthread_mutex_unlock(&delete_mutex);
-    printf("node_count: %d\n", node_count);
     return res;
 }
 
@@ -610,6 +609,15 @@ void check_max_nodes() {
     pthread_cond_wait(&delete_cond, &delete_mutex);
     while (node_count > max_count)
         drop_one_node();
+    assert(node_count <= max_count);
+    pthread_mutex_unlock(&delete_mutex);
+}
+
+void delete_all_nodes() {
+    pthread_mutex_lock(&delete_mutex);
+    while (node_count)
+        drop_one_node();
+    assert(node_count == 0);
     pthread_mutex_unlock(&delete_mutex);
 }
 
@@ -645,3 +653,8 @@ void print() {
     assert(count == node_count);
     pthread_mutex_unlock(&root_mutex);
 }
+
+int num_nodes() {
+    return node_count;
+}
+

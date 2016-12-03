@@ -446,6 +446,14 @@ void check_max_nodes() {
     pthread_mutex_unlock(&mutex);
 }
 
+void delete_all_nodes() {
+    pthread_mutex_lock(&mutex);
+    while (node_count)
+        assert(drop_one_node());
+    assert(node_count == 0);
+    pthread_mutex_unlock(&mutex);
+}
+
 int _print(struct trie_node *node, int depth, char lines[100], int count) {
     printf("%s", lines);
     if (!node->next)
@@ -477,5 +485,9 @@ void print() {
     printf("node_count: %d\nActual node count: %d\n", node_count, count);
     assert(count == node_count);
     pthread_mutex_unlock(&mutex);
+}
+
+int num_nodes() {
+    return node_count;
 }
 

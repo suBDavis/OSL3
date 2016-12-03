@@ -325,6 +325,120 @@ int self_tests() {
     DELETE_TEST("zxkczzudhzmzqhsu", strlen("zxkczzudhzmzqhsu"));
     print();
     INSERT_TEST("azbz", 4, 7);
+
+    // Test delete thread
+    if (separate_delete_thread) {
+        srandom(time(0));
+        int ins_count = 0;
+        struct random_data rd;
+        char rand_state[256];
+        int32_t salt = time(0);
+        rd.state = (int32_t*)rand_state;
+        initstate_r(salt, rand_state, sizeof(rand_state), &rd);
+        for (int k = 0; k < 1000; ++k) {
+            int32_t code;
+            int rv = random_r(&rd, &code);
+            int length = (code >> 2) & (64-1);
+            char buf[64];
+            int j;
+            int32_t ip4_addr;
+
+            if (rv) {
+                printf("Failed to get random number - %d\n", rv);
+                continue;
+            }
+
+            if (length == 0)
+                continue;
+
+            memset(buf, 0, 64);
+            /* Generate a random string in lowercase */
+            for (j = 0; j < length; j+= 6) {
+                int i;
+                int32_t chars;
+
+                rv = random_r(&rd, &chars);
+                if (rv) {
+                    printf("Failed to get random number - %d\n", rv);
+                    continue;
+                }
+
+                for (i = 0; i < 6 && (i+j) < length; i++) {
+                    char val = ( (chars >> (5 * i)) & 31);
+                    if (val > 25)
+                        val = 25;
+                    buf[j+i] = 'a' + val;
+                }
+            }
+            rv = random_r(&rd, &ip4_addr);
+            if (rv) {
+                printf("Failed to get random number - %d\n", rv);
+                continue;
+            }
+            if (insert(buf, length, ip4_addr)) ++ins_count;
+        }
+        sleep(1);
+        printf("\nNode count after %d inserts and a sleep: %d\n", ins_count, num_nodes());
+        assert(num_nodes() <= 100);
+        delete_all_nodes();
+        assert(num_nodes() == 0);
+
+        //Insert less than 100, ensure no deletions
+        int node_count = 0;
+        ins_count = 0;
+        for (int k = 0; k < 90; ++k) {
+            int32_t code;
+            int rv = random_r(&rd, &code);
+            int length = (code >> 2) & (64-1);
+            char buf[64];
+            int j;
+            int32_t ip4_addr;
+
+            if (rv) {
+                printf("Failed to get random number - %d\n", rv);
+                continue;
+            }
+
+            if (length == 0)
+                continue;
+
+            memset(buf, 0, 64);
+            /* Generate a random string in lowercase */
+            for (j = 0; j < length; j+= 6) {
+                int i;
+                int32_t chars;
+
+                rv = random_r(&rd, &chars);
+                if (rv) {
+                    printf("Failed to get random number - %d\n", rv);
+                    continue;
+                }
+
+                for (i = 0; i < 6 && (i+j) < length; i++) {
+                    char val = ( (chars >> (5 * i)) & 31);
+                    if (val > 25)
+                        val = 25;
+                    buf[j+i] = 'a' + val;
+                }
+            }
+            rv = random_r(&rd, &ip4_addr);
+            if (rv) {
+                printf("Failed to get random number - %d\n", rv);
+                continue;
+            }
+            if (insert(buf, length, ip4_addr)) ++ins_count;
+            node_count = num_nodes();
+            if (node_count > 90) break;
+        }
+        sleep(1);
+        printf("\nNode count after %d inserts and a sleep: %d\n\n", ins_count, num_nodes());
+        assert(num_nodes() <= 100);
+        assert(num_nodes() == node_count);
+        delete_all_nodes();
+        assert(num_nodes() == 0);
+    }
+
+
     printf("End of self-tests, tree is:\n");
     print();
     printf("End of self-tests\n");

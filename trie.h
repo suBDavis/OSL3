@@ -41,5 +41,11 @@ void print ();
  */
 extern int allow_squatting;
 
+/* Get node count for testing */
+int num_nodes();
+
+/* Delete all nodes for testing */
+void delete_all_nodes();
+
 
 #endif /* __TRIE_H__ */ 

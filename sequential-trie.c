@@ -429,6 +429,13 @@ int drop_one_node() {
 void check_max_nodes() {
     while (node_count > max_count)
         drop_one_node();
+    assert(node_count <= max_count);
+}
+
+void delete_all_nodes() {
+    while (node_count)
+        drop_one_node();
+    assert(node_count == 0);
 }
 
 int _print(struct trie_node *node, int depth, char lines[100], int count) {
@@ -460,5 +467,9 @@ void print() {
         count = _print(root, 0, lines, 1);
     printf("node_count: %d\nActual node count: %d\n", node_count, count);
     assert(count == node_count);
+}
+
+int num_nodes() {
+    return node_count;
 }
 
