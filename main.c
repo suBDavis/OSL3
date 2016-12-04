@@ -372,6 +372,7 @@ int self_tests() {
             }
             if (insert(buf, length, ip4_addr)) ++ins_count;
         }
+        shutdown_delete_thread();
         sleep(1);
         printf("\nNode count after %d inserts and a sleep: %d\n", ins_count, num_nodes());
         assert(num_nodes() <= 100);
@@ -424,6 +425,7 @@ int self_tests() {
             node_count = num_nodes();
             if (node_count > 90) break;
         }
+        shutdown_delete_thread();
         sleep(1);
         printf("\nNode count after %d inserts and a sleep: %d\n\n", ins_count, num_nodes());
         assert(num_nodes() <= 100);
