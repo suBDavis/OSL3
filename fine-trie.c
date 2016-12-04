@@ -258,14 +258,18 @@ int _insert (const char *string, size_t strlen, int32_t ip4_address,
 
             if (parent) {
                 parent->children = new_node;
+                printf("_ins10, this: %p, unlocking: %p\n", node, parent);
                 pthread_mutex_unlock(&(parent->mutex));
             } else if (left) {
                 left->next = new_node;
+                printf("_ins10, this: %p, unlocking: %p\n", node, left);
                 pthread_mutex_unlock(&(left->mutex));
             } else if ((!parent) || (!left)) {
                 root = new_node;
             }
+            printf("_ins10, this: %p, unlocking: %p\n", node, new_node);
             pthread_mutex_unlock(&(new_node->mutex));
+            printf("_ins10, this: %p, unlocking: %p\n", node, node);
             pthread_mutex_unlock(&(node->mutex));
             return 1;
 
@@ -276,21 +280,31 @@ int _insert (const char *string, size_t strlen, int32_t ip4_address,
                 printf("_ins11, this: %p, locking: %p\n", node, new_node);
                 pthread_mutex_lock(&(new_node->mutex));
                 node->children = new_node;
-                if (parent)
+                if (parent) {
+                    printf("_ins11, this: %p, unlocking: %p\n", node, parent);
                     pthread_mutex_unlock(&(parent->mutex));
-                if (left)
+                }
+                if (left) {
+                    printf("_ins11, this: %p, unlocking: %p\n", node, left);
                     pthread_mutex_unlock(&(left->mutex));
+                }
+                printf("_ins11, this: %p, unlocking: %p\n", node, node);
                 pthread_mutex_unlock(&(node->mutex));
+                printf("_ins11, this: %p, unlocking: %p\n", node, new_node);
                 pthread_mutex_unlock(&(new_node->mutex));
                 return 1;
             } else {
                 // Recur on children list, store "parent" (loosely defined)
                 printf("_ins12, this: %p, locking: %p\n", node, node->children);
                 pthread_mutex_lock(&(node->children->mutex));
-                if (parent)
+                if (parent) {
+                    printf("_ins12, this: %p, unlocking: %p\n", node, parent);
                     pthread_mutex_unlock(&(parent->mutex));
-                if (left)
+                }
+                if (left) {
+                    printf("_ins12, this: %p, unlocking: %p\n", node, left);
                     pthread_mutex_unlock(&(left->mutex));
+                }
                 return _insert(string, strlen - keylen, ip4_address,
                         node->children, node, NULL);
             }
@@ -298,17 +312,26 @@ int _insert (const char *string, size_t strlen, int32_t ip4_address,
             assert (strlen == keylen);
             if (node->ip4_address == 0) {
                 node->ip4_address = ip4_address;
-                if (parent)
+                if (parent) {
+                    printf("_ins13, this: %p, unlocking: %p\n", node, parent);
                     pthread_mutex_unlock(&(parent->mutex));
-                if (left)
+                }
+                if (left) {
+                    printf("_ins13, this: %p, unlocking: %p\n", node, left);
                     pthread_mutex_unlock(&(left->mutex));
+                }
+                printf("_ins13, this: %p, unlocking: %p\n", node, node);
                 pthread_mutex_unlock(&(node->mutex));
                 return 1;
             } else {
-                if (parent)
+                if (parent) {
+                    printf("_ins14, this: %p, unlocking: %p\n", node, parent);
                     pthread_mutex_unlock(&(parent->mutex));
-                if (left)
+                }
+                if (left) {
+                    printf("_ins14, this: %p, unlocking: %p\n", node, left);
                     pthread_mutex_unlock(&(left->mutex));
+                }
                 pthread_mutex_unlock(&(node->mutex));
                 return 0;
             }
@@ -345,10 +368,12 @@ int _insert (const char *string, size_t strlen, int32_t ip4_address,
             } else if (parent) {
                 assert(parent->children == node);
                 parent->children = new_node;
+                printf("_ins21, this: %p, unlocking: %p\n", node, parent);
                 pthread_mutex_unlock(&(parent->mutex));
             } else if (left) {
                 assert(left->next == node);
                 left->next = new_node;
+                printf("_ins21, this: %p, unlocking: %p\n", node, left);
                 pthread_mutex_unlock(&(left->mutex));
             } else if ((!parent) && (!left)) {
                 root = new_node;
@@ -362,10 +387,14 @@ int _insert (const char *string, size_t strlen, int32_t ip4_address,
                 if (node->next) {
                     printf("_ins22, this: %p, locking: %p\n", node, node->next);
                     pthread_mutex_lock(&(node->next->mutex));
-                    if (parent)
+                    if (parent) {
+                        printf("_ins22, this: %p, unlocking: %p\n", node, parent);
                         pthread_mutex_unlock(&(parent->mutex));
-                    if (left)
+                    }
+                    if (left) {
+                        printf("_ins22, this: %p, unlocking: %p\n", node, left);
                         pthread_mutex_unlock(&(left->mutex));
+                    }
                     return _insert(string, strlen, ip4_address, node->next, NULL, node);
                 } else {
                     // Insert here
@@ -373,11 +402,17 @@ int _insert (const char *string, size_t strlen, int32_t ip4_address,
                     printf("_ins23, this: %p, locking: %p\n", node, new_node);
                     pthread_mutex_lock(&(new_node->mutex));
                     node->next = new_node;
-                    if (parent)
+                    if (parent) {
+                        printf("_ins23, this: %p, unlocking: %p\n", node, parent);
                         pthread_mutex_unlock(&(parent->mutex));
-                    if (left)
+                    }
+                    if (left) {
+                        printf("_ins23, this: %p, unlocking: %p\n", node, left);
                         pthread_mutex_unlock(&(left->mutex));
+                    }
+                    printf("_ins23, this: %p, unlocking: %p\n", node, node);
                     pthread_mutex_unlock(&(node->mutex));
+                    printf("_ins23, this: %p, unlocking: %p\n", node, new_node);
                     pthread_mutex_unlock(&(new_node->mutex));
                     return 1;
                 }
@@ -393,15 +428,23 @@ int _insert (const char *string, size_t strlen, int32_t ip4_address,
                     parent->children = new_node;
                 else if (left && left->next == node)
                     left->next = new_node;
+                printf("_ins24, this: %p, unlocking: %p\n", node, new_node);
                 pthread_mutex_unlock(&(new_node->mutex));
             }
         }
-        if (new_node)
+        if (new_node) {
+            printf("_ins3, this: %p, unlocking: %p\n", node, new_node);
             pthread_mutex_unlock(&(new_node->mutex));
-        if (parent)
+        }
+        if (parent) {
+            printf("_ins3, this: %p, unlocking: %p\n", node, parent);
             pthread_mutex_unlock(&(parent->mutex));
-        if (left)
+        }
+        if (left) {
+            printf("_ins3, this: %p, unlocking: %p\n", node, left);
             pthread_mutex_unlock(&(left->mutex));
+        }
+        printf("_ins3, this: %p, unlocking: %p\n", node, node);
         pthread_mutex_unlock(&(node->mutex));
         return 1;
     }
@@ -414,27 +457,24 @@ int insert (const char *string, size_t strlen, int32_t ip4_address) {
     if (strlen == 0)
         return 0;
 
+    printf("Begin insert, locking root_mutex\n");
     pthread_mutex_lock(&root_mutex);
-    puts("ins1");
     int res;
     /* Edge case: root is null */
     if (root == NULL) {
         root = new_leaf (string, strlen, ip4_address);
         pthread_mutex_unlock(&root_mutex);
-        puts("ins2");
         return 1;
     }
+    printf("ins0, locking: %p\n", root);
     pthread_mutex_lock(&(root->mutex));
-    puts("ins3");
     pthread_mutex_unlock(&root_mutex);
     res = _insert (string, strlen, ip4_address, root, NULL, NULL);
     //assert_invariants();
-    puts("INS COMPLETE");
+    printf("ins complete, locking delete_mutex\n");
     pthread_mutex_lock(&delete_mutex);
-    puts("ins4");
     if (node_count >= max_count  && separate_delete_thread)
         pthread_cond_signal(&delete_cond);
-    puts("ins5");
     pthread_mutex_unlock(&delete_mutex);
     return res;
 }
