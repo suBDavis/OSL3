@@ -9,9 +9,7 @@ True fine-grained locking could only be implemented on was implemented only inse
 
 Generally, recursive functions are called with node already locked, and it is the responsibility of the recursive call to unlock itself before returning.
 
-It was necessary to modify the trie struct to include a pointer to the parent's mutex such that parent_mutex could be unlocked from node's depth in the stack before descending further.
-
-A trie-wide lock is necessary when checking if root is null to maintain order of operations, for example running an insert followed by a delete of the same string. Without the lock, it would be possible for delete to check if the root is null and return before the string is inserted.
+A trie-wide lock is necessary when checking if root is null to maintain order of operations, for example running an insert followed by a delete of the same string. Without the lock, it would be possible for delete to check if the root is null and return before the string is inserted. It's also necessary in fine-grained locking when swapping root with another node.
 
 
 ### Insert

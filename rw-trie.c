@@ -6,6 +6,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include "trie.h"
+#include <unistd.h>
 
 struct trie_node {
     struct trie_node *next;  /* parent list */
@@ -21,6 +22,7 @@ static int max_count = 100;  //Try to stay under 100 nodes
 static pthread_mutex_t delete_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_rwlock_t rwlock = PTHREAD_RWLOCK_INITIALIZER;
 static pthread_cond_t delete_cond = PTHREAD_COND_INITIALIZER;
+extern int separate_delete_thread;
 
 struct trie_node * new_leaf (const char *string, size_t strlen, int32_t ip4_address) {
     struct trie_node *new_node = malloc(sizeof(struct trie_node));
@@ -98,7 +100,11 @@ void init(int numthreads) {
 }
 
 void shutdown_delete_thread() {
-    // Don't need to do anything in the sequential case.
+    if (separate_delete_thread) {
+        //wait briefly to allow delete thread to finish
+        usleep(100000);
+        pthread_cond_signal(&delete_cond);
+    }
     return;
 }
 
@@ -156,7 +162,10 @@ int search (const char *string, size_t strlen, int32_t *ip4_address) {
     if (strlen == 0)
         return 0;
 
+    //ensure delete thread is not running
+    pthread_mutex_lock(&delete_mutex);
     pthread_rwlock_rdlock(&rwlock);
+    pthread_mutex_unlock(&delete_mutex);
     found = _search(root, string, strlen);
 
     if (found && ip4_address)
@@ -303,7 +312,9 @@ int insert (const char *string, size_t strlen, int32_t ip4_address) {
 
     int insert_res;
 
+    pthread_mutex_lock(&delete_mutex);
     pthread_rwlock_wrlock(&rwlock);
+    pthread_mutex_unlock(&delete_mutex);
 
     /* Edge case: root is null */
     if (root == NULL) {
@@ -312,9 +323,9 @@ int insert (const char *string, size_t strlen, int32_t ip4_address) {
     } else insert_res = _insert(string, strlen, ip4_address, root, NULL, NULL);
 
     assert_invariants();
-    pthread_rwlock_unlock(&rwlock);
-    if (node_count > max_count)
+    if (node_count > max_count && separate_delete_thread)
         pthread_cond_signal(&delete_cond);
+    pthread_rwlock_unlock(&rwlock);
     return insert_res;
 }
 
@@ -418,7 +429,9 @@ int delete  (const char *string, size_t strlen) {
     // Skip strings of length 0
     if (strlen == 0)
         return 0;
+    pthread_mutex_lock(&delete_mutex);
     pthread_rwlock_wrlock(&rwlock);
+    pthread_mutex_unlock(&delete_mutex);
     struct trie_node *delete_result = _delete(root, string, strlen);
     assert_invariants();
     pthread_rwlock_unlock(&rwlock);
@@ -448,7 +461,8 @@ int drop_one_node() {
 */
 void check_max_nodes() {
     pthread_mutex_lock(&delete_mutex);
-    pthread_cond_wait(&delete_cond, &delete_mutex);
+    if (separate_delete_thread)
+        pthread_cond_wait(&delete_cond, &delete_mutex);
     pthread_rwlock_wrlock(&rwlock);
     while (node_count > max_count)
         assert(drop_one_node());
@@ -458,11 +472,13 @@ void check_max_nodes() {
 }
 
 void delete_all_nodes() {
+    pthread_mutex_lock(&delete_mutex);
     pthread_rwlock_wrlock(&rwlock);
     while (node_count)
         assert(drop_one_node());
     assert(node_count == 0);
     pthread_rwlock_unlock(&rwlock);
+    pthread_mutex_unlock(&delete_mutex);
 }
 
 int _print(struct trie_node *node, int depth, char lines[100], int count) {
@@ -486,7 +502,9 @@ int _print(struct trie_node *node, int depth, char lines[100], int count) {
 }
 
 void print() {
-    pthread_rwlock_wrlock(&rwlock);
+    pthread_mutex_lock(&delete_mutex);
+    pthread_rwlock_rdlock(&rwlock);
+    pthread_mutex_unlock(&delete_mutex);
     printf ("Root is at %p\n", root);
     char lines[100];
     lines[0] = '\0';

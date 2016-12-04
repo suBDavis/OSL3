@@ -101,10 +101,11 @@ void init(int numthreads) {
 }
 
 void shutdown_delete_thread() {
-    if (separate_delete_thread)
+    if (separate_delete_thread) {
         // sleep briefly before signaling, so that any last inserts may finish.
         usleep(100000); // .1 seconds
-    pthread_cond_signal(&delete_cond);
+        pthread_cond_signal(&delete_cond);
+    }
     return;
 }
 
