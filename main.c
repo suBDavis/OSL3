@@ -94,7 +94,6 @@ client(void *arg)
         }
 
         DEBUG_PRINT ("Random string is %s\n", buf);
-/*
 
         switch (code % 3) {
             case 0: // Search
@@ -117,14 +116,6 @@ client(void *arg)
             default:
                 assert(0);
         }
-*/
-                DEBUG_PRINT ("insert\n");
-                rv = random_r(&rd, &ip4_addr);
-                if (rv) {
-                    printf("Failed to get random number - %d\n", rv);
-                    return NULL;
-                }
-                insert (buf, length, ip4_addr);
 
         /* If we don't have a separate delete thread, the client needs to
          * make sure that the count didn't exceed the max.
@@ -330,7 +321,6 @@ int self_tests() {
     print();
     INSERT_TEST("azbz", 4, 7);
 
-    /*
     //Test delete thread
     if (separate_delete_thread) {
         srandom(time(0));
@@ -440,7 +430,6 @@ int self_tests() {
         assert(num_nodes() == node_count);
         delete_all_nodes();
     }
-*/
 
     printf("End of self-tests, tree is:\n");
     print();
