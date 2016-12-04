@@ -220,6 +220,11 @@ int _insert (const char *string, size_t strlen, int32_t ip4_address,
     assert (node != NULL);
     assert (node->strlen < MAX_KEY);
     assert ((!parent) || (!left));
+    if (parent)
+        assert(pthread_mutex_trylock(&(parent->mutex)));
+    if (left)
+        assert(pthread_mutex_trylock(&(left->mutex)));
+
 
     // Take the minimum of the two lengths
     cmp = compare_keys_substring (node->key, node->strlen, string, strlen, &keylen);
@@ -336,7 +341,6 @@ int _insert (const char *string, size_t strlen, int32_t ip4_address,
             } else if ((!parent) && (!left)) {
                 root = new_node;
             }
-            pthread_mutex_unlock(&(new_node->mutex));
             return _insert(string, offset, ip4_address,
                     node, new_node, NULL);
         } else {

@@ -4,3 +4,4 @@ dns-rw
 dns-sequential
 *.o
 .idea
+*.swp
