@@ -18,6 +18,7 @@ struct trie_node {
     pthread_mutex_t *prev_mutex;
 };
 
+
 static struct trie_node * root = NULL;
 static int node_count = 0;
 static int max_count = 100;  //Try to stay under 100 nodes
@@ -453,6 +454,12 @@ int _insert (const char *string, size_t strlen, int32_t ip4_address,
 void assert_invariants();
 
 int insert (const char *string, size_t strlen, int32_t ip4_address) {
+
+    begin_insert: printf(" ");
+    struct timespec *wait = malloc(sizeof(struct timespec));
+    wait->tv_sec=1;
+    wait->tv_nsec=0;
+
     // Skip strings of length 0
     if (strlen == 0)
         return 0;
@@ -467,7 +474,11 @@ int insert (const char *string, size_t strlen, int32_t ip4_address) {
         return 1;
     }
     printf("ins0, locking: %p\n", root);
-    pthread_mutex_lock(&(root->mutex));
+    // pthread_mutex_lock(&(root->mutex));
+    if (pthread_mutex_timedlock(&(root->mutex), wait) ){
+        pthread_mutex_unlock(&root_mutex);
+        goto begin_insert;
+    }
     pthread_mutex_unlock(&root_mutex);
     res = _insert (string, strlen, ip4_address, root, NULL, NULL);
     //assert_invariants();
