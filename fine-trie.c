@@ -15,7 +15,6 @@ struct trie_node {
     struct trie_node *children; /* Sorted list of children */
     char key[MAX_KEY]; /* Up to MAX_KEY chars */
     pthread_mutex_t mutex;
-    pthread_mutex_t *prev_mutex;
 };
 
 static struct trie_node * root = NULL;
@@ -41,7 +40,6 @@ struct trie_node * new_leaf (const char *string, size_t strlen, int32_t ip4_addr
     new_node->key[strlen] = '\0';
     new_node->ip4_address = ip4_address;
     new_node->children = NULL;
-    new_node->prev_mutex = NULL;
     int err = pthread_mutex_init(&(new_node->mutex), NULL);
     if (err)
         printf("Failed to initialize mutex: %d\n", err);
@@ -136,31 +134,19 @@ _search (struct trie_node *node, const char *string, size_t strlen) {
 
         // If this key is longer than our search string, the key isn't here
         if (node->strlen > keylen) {
-            if (node->prev_mutex) {
-                pthread_mutex_unlock(node->prev_mutex);
-                node->prev_mutex = NULL;
-            }
             pthread_mutex_unlock(&(node->mutex));
             return NULL;
         } else if (strlen > keylen) {
             // Recur on children list
-            if (node->prev_mutex) {
-                pthread_mutex_unlock(node->prev_mutex);
-                node->prev_mutex = NULL;
-            }
             if (!node->children) {
                 pthread_mutex_unlock(&(node->mutex));
                 return NULL;
             }
             pthread_mutex_lock(&(node->children->mutex));
-            node->children->prev_mutex = &(node->mutex);
+            pthread_mutex_unlock(&(node->mutex));
             return _search(node->children, string, strlen - keylen);
         } else {
             assert (strlen == keylen);
-            if (node->prev_mutex) {
-                pthread_mutex_unlock(node->prev_mutex);
-                node->prev_mutex = NULL;
-            }
             pthread_mutex_unlock(&(node->mutex));
             return node;
         }
@@ -169,21 +155,15 @@ _search (struct trie_node *node, const char *string, size_t strlen) {
         cmp = compare_keys(node->key, node->strlen, string, strlen, &keylen);
         if (cmp < 0) {
             // No, look right (the node's key is "less" than the search key)
-            if (node->prev_mutex)
-                pthread_mutex_unlock(node->prev_mutex);
             if (!node->next) {
                 pthread_mutex_unlock(&(node->mutex));
                 return NULL;
             }
             pthread_mutex_lock(&(node->next->mutex));
-            node->next->prev_mutex = &node->mutex;
+            pthread_mutex_unlock(&(node->mutex));
             return _search(node->next, string, strlen);
         } else {
             // Quit early
-            if (node->prev_mutex) {
-                pthread_mutex_unlock(node->prev_mutex);
-                node->prev_mutex = NULL;
-            }
             pthread_mutex_unlock(&(node->mutex));
             return 0;
         }
