@@ -6,7 +6,6 @@
 #include <string.h>
 #include <stdlib.h>
 #include "trie.h"
-#include <unistd.h>
 
 struct trie_node {
     struct trie_node *next;  /* parent list */
@@ -102,8 +101,6 @@ void init(int numthreads) {
 
 void shutdown_delete_thread() {
     if (separate_delete_thread) {
-        // sleep briefly before signaling, so that any last inserts may finish.
-        usleep(100000); // .1 seconds
         pthread_mutex_lock(&delete_mutex);
         pthread_cond_signal(&delete_cond);
         pthread_mutex_unlock(&delete_mutex);
