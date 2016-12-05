@@ -21,12 +21,15 @@ static int node_count = 0;
 static int max_count = 100;  //Try to stay under 100 nodes
 static pthread_mutex_t delete_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t root_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t node_count_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t delete_cond = PTHREAD_COND_INITIALIZER;
 extern int separate_delete_thread;
 
 struct trie_node * new_leaf (const char *string, size_t strlen, int32_t ip4_address) {
     struct trie_node *new_node = malloc(sizeof(struct trie_node));
+    pthread_mutex_lock(&node_count_mutex);
     node_count++;
+    pthread_mutex_unlock(&node_count_mutex);
     if (!new_node) {
         printf ("WARNING: Node memory allocation failed.  Results may be bogus.\n");
         return NULL;
@@ -516,7 +519,9 @@ _delete (struct trie_node *node, const char *string,
                      * That's why unlocking is safe here.
                      */
                     free(found);
+                    pthread_mutex_lock(&node_count_mutex);
                     node_count--;
+                    pthread_mutex_unlock(&node_count_mutex);
                 }
 
                 /* Delete the root node if we empty the tree */
@@ -530,7 +535,9 @@ _delete (struct trie_node *node, const char *string,
                     root = node->next;
                     pthread_mutex_unlock(&(node->mutex));
                     free(node);
+                    pthread_mutex_lock(&node_count_mutex);
                     node_count--;
+                    pthread_mutex_unlock(&node_count_mutex);
 
                     /* It's safe to release the root lock now */
                     if (root)
@@ -564,7 +571,9 @@ _delete (struct trie_node *node, const char *string,
                     pthread_mutex_unlock(&(node->mutex));
                     free(node);
                     node = NULL;
+                    pthread_mutex_lock(&node_count_mutex);
                     node_count--;
+                    pthread_mutex_unlock(&node_count_mutex);
                     /* unlock the root */
                     if (root)
                         pthread_mutex_unlock(&(root->mutex));
@@ -610,7 +619,9 @@ _delete (struct trie_node *node, const char *string,
                     assert(node->next == found);
                     node->next = found->next;
                     free(found);
+                    pthread_mutex_lock(&node_count_mutex);
                     node_count--;
+                    pthread_mutex_unlock(&node_count_mutex);
                 }
 
                 pthread_mutex_unlock(&(node->mutex));
@@ -688,6 +699,7 @@ void check_max_nodes() {
 void delete_all_nodes() {
     pthread_mutex_lock(&delete_mutex);
     pthread_mutex_lock(&root_mutex);
+
     while (node_count)
         drop_one_node();
     assert(node_count == 0);

@@ -51,11 +51,6 @@ If ASDF were deleted from the above trie (and locks are denoted by `*`) at the s
 Due to the nature of the drop_one_node implementation, the complete traversal path must remain locked in order to avoid a similar issue to the one in Delete. Additionally, the lock needs to remain between building the string and calling \_delete, so there are effectively no benefits to a hand-over-hand locking of drop_one_node. Therefore, check_max_nodes is locked in the same fashion as in ex3 using the trie-wide mutex.
 
 
-Note on rw-trie and delete thread
------------------------
-As RW locks do not support conditions, it is not possible to have a delete thread with rw-trie.
-
-
 Extra credit attempted:
 -----------------------
 * Improved print function
