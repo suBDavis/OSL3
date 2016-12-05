@@ -626,7 +626,6 @@ void check_max_nodes() {
     pthread_mutex_lock(&root_mutex);
     while (node_count > max_count)
         assert(drop_one_node());
-    assert(node_count <= max_count);
     pthread_mutex_unlock(&root_mutex);
     pthread_mutex_unlock(&delete_mutex);
 }
