@@ -8,7 +8,7 @@
 
 #define MAX_KEY 64
 // Uncomment this line for debug printing
-#define DEBUG 1
+//#define DEBUG 1
 
 /* Optional init routine.  May not be required. */
 void init (int numthreads);
