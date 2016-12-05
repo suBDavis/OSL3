@@ -25,7 +25,6 @@ volatile int finished = 0;
 #define DEBUG_PRINT(...) 
 #endif
 
-
 static void *
 delete_thread(void *arg) {
     while (!finished)

@@ -1,4 +1,8 @@
 #/bin/bash
+echo "Usage: ./runall.sh [options]
+  -l, --length [TIME]    run clients for length time
+  -c, --numclients [NUM] number of client threads
+  -n, --count [NUM]      run num iterations"
 make clean
 make
 TIME=30
@@ -8,11 +12,11 @@ while [[ $# -gt 1 ]]
 do
     key="$1"
     case $key in
-        -t|--time)
+        -l|--length)
             TIME="$2"
             shift
             ;;
-        -c|--threads)
+        -c|--numclients)
             THREADS="$2"
             shift
             ;;
@@ -24,7 +28,8 @@ do
     esac
     shift
 done
-while [ $COUNT -gt 0 ]; do
+while [ $COUNT -gt 0 ]
+do
     echo "running dns-mutex"
     ./dns-mutex -c $THREADS -t -l $TIME
     echo "dns-mutex complete"
@@ -36,3 +41,5 @@ while [ $COUNT -gt 0 ]; do
     echo "dns-fine complete"
     let COUNT-=1
 done
+echo "done"
+

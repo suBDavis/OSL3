@@ -124,9 +124,9 @@ _search (struct trie_node *node, const char *string, size_t strlen) {
     if (node == NULL) return NULL;
 
     assert(node->strlen < MAX_KEY);
+
+    // Check if node is locked
     assert(pthread_mutex_trylock(&(node->mutex)));
-    //if (node->prev_mutex)
-    //    assert(pthread_mutex_trylock(node->prev_mutex));
 
     // See if this key is a substring of the string passed in
     cmp = compare_keys_substring(node->key, node->strlen, string, strlen, &keylen);
@@ -413,10 +413,10 @@ int insert (const char *string, size_t strlen, int32_t ip4_address) {
     pthread_mutex_lock(&(root->mutex));
     res = _insert (string, strlen, ip4_address, root, NULL, NULL);
     //assert_invariants();
-    pthread_mutex_lock(&root_mutex);
+    pthread_mutex_lock(&delete_mutex);
     if (node_count >= max_count  && separate_delete_thread)
         pthread_cond_signal(&delete_cond);
-    pthread_mutex_unlock(&root_mutex);
+    pthread_mutex_unlock(&delete_mutex);
     return res;
 }
 
@@ -439,7 +439,10 @@ _delete (struct trie_node *node, const char *string,
     if (node == NULL) return NULL;
 
     assert(node->strlen < MAX_KEY);
+
+    // Check if node is locked
     assert(pthread_mutex_trylock(&(node->mutex)));
+
 
     // See if this key is a substring of the string passed in
     cmp = compare_keys_substring (node->key, node->strlen, string, strlen, &keylen);
@@ -597,12 +600,12 @@ int delete  (const char *string, size_t strlen) {
  */
 int drop_one_node() {
     // keep root node locked while traversing to maintain path
+    pthread_mutex_lock(&(root->mutex));
     struct trie_node *node = root;
     assert(node->key != NULL);
     int size = MAX_KEY-1;
     char key[size+1];
     key[size] = '\0';
-    pthread_mutex_lock(&(node->mutex));
     do {
         assert(node->key != NULL);
         size -= node->strlen;
@@ -610,10 +613,10 @@ int drop_one_node() {
         memcpy(&key[size], node->key, node->strlen);
         if (node->children)
             pthread_mutex_lock(&(node->children->mutex));
-        pthread_mutex_unlock(&(node->mutex));
+        if (node != root)
+            pthread_mutex_unlock(&(node->mutex));
     } while ((node = node->children));
     assert(node == NULL);
-    pthread_mutex_lock(&(root->mutex));
     return (_delete(root, &key[size], strlen(&key[size])) != NULL);
 }
 
@@ -632,9 +635,11 @@ void check_max_nodes() {
 
 void delete_all_nodes() {
     pthread_mutex_lock(&delete_mutex);
+    pthread_mutex_lock(&root_mutex);
     while (node_count)
         drop_one_node();
     assert(node_count == 0);
+    pthread_mutex_unlock(&root_mutex);
     pthread_mutex_unlock(&delete_mutex);
 }
 
@@ -663,7 +668,9 @@ int _print(struct trie_node *node, int depth, char lines[100], int count) {
 }
 
 void print() {
+    pthread_mutex_lock(&delete_mutex);
     pthread_mutex_lock(&root_mutex);
+    pthread_mutex_unlock(&delete_mutex);
     printf ("Root is at %p\n", root);
     char lines[100];
     lines[0] = '\0';
