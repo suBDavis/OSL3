@@ -109,8 +109,7 @@ client(void *arg)
                 break;
             case 2: // delete
                 DEBUG_PRINT ("delete\n");
-                search (buf, length, NULL);
-                //delete (buf, length);
+                delete (buf, length);
                 break;
             default:
                 assert(0);

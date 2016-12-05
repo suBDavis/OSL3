@@ -32,12 +32,27 @@ while [ $COUNT -gt 0 ]
 do
     echo "running dns-mutex"
     ./dns-mutex -c $THREADS -t -l $TIME
+    if [ $? -ne 0 ]
+    then
+        echo "dns-mutex failed"
+        exit $?
+    fi
     echo "dns-mutex complete"
     echo "running dns-rw"
     ./dns-rw -c $THREADS -t -l $TIME
+    if [ $? -ne 0 ]
+    then
+        echo "dns-rw failed"
+        exit $?
+    fi
     echo "dns-rw complete"
     echo "running dns-fine"
     ./dns-fine -c $THREADS -t -l $TIME
+    if [ $? -ne 0 ]
+    then
+        echo "dns-fine failed"
+        exit $?
+    fi
     echo "dns-fine complete"
     let COUNT-=1
 done
